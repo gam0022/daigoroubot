@@ -78,5 +78,5 @@ end
 if str_update
 	daigorou.post(str_update, nil, nil, time)
 else
-	logs "#error: faild to generate str_updstockd"
+	logs "#error: faild to generate str_update"
 end
