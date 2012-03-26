@@ -115,7 +115,6 @@ class TwitterBot
 						res.read_body do |chunk|
 							# chunked = falseなら例外を発生
 							raise 'Response is not chunked' unless res.chunked?
-							#pp chunk
 
 							# JSONのパースに失敗したらスキップして次へ
 							status = JSON.parse(chunk) rescue next
@@ -127,7 +126,7 @@ class TwitterBot
 					end
 				end
 
-				# http://d.hatena.ne.jp/aquarla/20101020/1287540883
+				#	http://d.hatena.ne.jp/aquarla/20101020/1287540883
 				#	Timeout::Errorも明示的に捕捉する必要あるらしい。
 				#	現状だと、あらゆる例外をキャッチしてしまう。
 			rescue Timeout::Error, StandardError
@@ -177,7 +176,6 @@ class TwitterBot
 
 	def learn(text)
 
-		# mecabで形態素解析して、 参照テーブルを作る
 		mecab = MeCab::Tagger.new('-O wakati') 
 		node =  mecab.parseToNode(text + " EOS")
 		surfaces = Array.new#	分解した単語のリスト
@@ -360,7 +358,7 @@ class String
 			node = node.next
 		end
 
-		buf.gsub(/だのだ/, "なのだ").gsub(/のだよ/, "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").gsub(/なのだ [.,]/, "").gsub("なのだ.なのだ", "なのだ")
+		buf.gsub("だのだ", "なのだ").gsub("のだよ", "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").gsub(/なのだ [.,]/, "").gsub("なのだ.なのだ", "なのだ")
 	end	
 
 	#
