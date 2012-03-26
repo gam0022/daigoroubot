@@ -127,9 +127,9 @@ class TwitterBot
 					end
 				end
 
-			# http://d.hatena.ne.jp/aquarla/20101020/1287540883
-			#	Timeout::Errorも明示的に捕捉する必要あるらしい。
-			#	現状だと、あらゆる例外をキャッチしてしまう。
+				# http://d.hatena.ne.jp/aquarla/20101020/1287540883
+				#	Timeout::Errorも明示的に捕捉する必要あるらしい。
+				#	現状だと、あらゆる例外をキャッチしてしまう。
 			rescue Timeout::Error, StandardError
 				logs "#error: #{$!}"
 				sleep_time = (i > 10) ? 5*i : 10
@@ -227,13 +227,7 @@ class TwitterBot
 
 				t1 = keyword
 				t2 = list.sample
-
-				if t2 =~ /^\w+$/
-					text = "#{t1} #{t2}"
-				else
-					text = t1 + t2
-				end
-				puts text
+				text = t1.eappend t2
 
 				loop do
 					list = Array.new
@@ -246,11 +240,7 @@ class TwitterBot
 					hash = list.sample# 乱数で次の文節を決定する
 					t1 = hash[:body]
 					t2 = hash[:tail]
-					if hash[:tail] =~ /^\w+$/
-						text += " #{hash[:tail]}"
-					else
-						text += hash[:tail]
-					end
+					text = text.eappend hash[:tail]
 					break if hash[:tail] == "EOS"
 				end
 
@@ -308,6 +298,18 @@ end
 class String
 
 	#
+	#	英単語の場合、スペースをはさんで結合
+	#
+
+	def eappend(text)
+		if text =~ /^\w+$/ && self != ''
+			return "#{self} #{text}"
+		else
+			return "#{self}#{text}"
+		end
+	end
+
+	#
 	# テキストから余分な文字を取り除く
 	#
 
@@ -324,7 +326,7 @@ class String
 	def fin?(node)
 		return true unless node.next.surface
 		return true if node.next.surface.to_s.toutf8 =~ /(EOS| |　|!|！|,|、|[.]|。)/
-		return nil
+			return nil
 	end
 
 	#
@@ -352,16 +354,13 @@ class String
 			elsif feature == '助詞,終助詞,*,*,か,か,*'
 				buf += surface + 'なのだ'
 			else
-				buf += surface
+				buf = buf.eappend surface
 			end
-
-			# 英単語対策
-			buf += " " if surface =~ /^\w+$/
 
 			node = node.next
 		end
 
-		buf.gsub(/だのだ/, "なのだ").gsub(/のだよ/, "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").gsub(/なのだ [.,]/, "")
+		buf.gsub(/だのだ/, "なのだ").gsub(/のだよ/, "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").gsub(/なのだ [.,]/, "").gsub("なのだ.なのだ", "なのだ")
 	end	
 
 	#
