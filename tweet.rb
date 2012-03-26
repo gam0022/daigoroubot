@@ -1,14 +1,15 @@
 # -*- encoding: utf-8 -*-
 $:.unshift File.dirname(__FILE__)
 require 'common.rb'
+
+# stat message
+logs "#start: tweet.rb"
 daigorou = TwitterBot.new
 
 regular = nil	#ランダムなつぶやき
 time = nil		#時間を付加
 #daigorou.debug = nil	#デバッグモード
 
-# stat message
-logs "#start: tweet.rb"
 
 #
 #	オプション解析
@@ -23,7 +24,7 @@ ARGV.each do |arg|
 			regular = true
 		when 't', 'time'
 			time = true
-		when 'd', 'debug mode'
+		when 'd', 'debug'
 			daigorou.debug = true
 		end
 	else

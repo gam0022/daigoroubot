@@ -13,12 +13,11 @@ daigorou = TwitterBot.new
 ARGV.each do |arg|
 	if arg =~ /(^-)(\w*)/
 		case $2
-		when 'd', 'daigorou.debug'
+		when 'd', 'debug'
 			daigorou.debug = true
 		end
 	end
 end
-
 
 
 #

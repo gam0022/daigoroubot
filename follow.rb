@@ -3,6 +3,8 @@ $:.unshift File.dirname(__FILE__)
 require 'common.rb'
 require 'twitter'
 
+# start message
+logs "#start: follow.rb"
 daigorou = TwitterBot.new
 
 Twitter.configure do |configer|
