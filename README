@@ -1,4 +1,5 @@
-次のような機能を持つ Twitter Bot です。
+daigoroubotとは、次のような機能を持つ Twitter Bot です。
+https://twitter.com/#!/daigoroubot
 
 - 他人の発言から定期的にマルコフ連鎖で適当につぶやく。
 - Streaming API を使った高速なリプライをする。
