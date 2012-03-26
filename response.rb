@@ -46,7 +46,7 @@ daigorou.connect do |status|
 
 	# メンションが来たら
 	if text.index("@#{daigorou.name}") && !(text =~ /^RT/) && str_update == nil
-		# 死ねと命令されたら
+		# adminからのコマンド受付
 		if screen_name.in_hash?(daigorou.config['admin'])
 			if text.index("kill")
 				str_update = "はい。死にますのだ（ＵTωT) #daigoroubot_death"
