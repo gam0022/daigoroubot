@@ -69,8 +69,8 @@ daigorou.connect do |status|
 			mecab = MeCab::Tagger.new('-O wakati')
 			# keyword: マルコフ連鎖の起点となる単語
 			keyword = ["僕", nil].sample
-			# 75%の確立で、リプライに含まれる名詞or形容詞からキーワードを設定する。
-			# 25%の確立で、上で生成した文章からさらに同様にしてキーワードを設定する。
+			# 75%の確率で、リプライに含まれる名詞or形容詞からキーワードを設定する。
+			# 25%の確率で、上で生成した文章からさらに同様にしてキーワードを設定する。
 			f = (rand(4) == 0) && keyword == nil ? 1 : 0
 			(0 .. f).each do |i|
 				node =  mecab.parseToNode(temp.filter)
