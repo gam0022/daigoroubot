@@ -82,12 +82,15 @@ daigorou.connect do |status|
 					end
 					node = node.next
 				end
-				keyword = list.sample if list.size != 0
-				logs "keyword(#{i}): [#{keyword}]"
-
-				str_update = temp = daigorou.generate_phrase(keyword)
-				logs "temp: #{temp}"
-				break if temp == nil
+				if list.size != 0
+					keyword = list.sample
+					logs "keyword(#{i}): [#{keyword}]"
+					str_update = temp = daigorou.generate_phrase(keyword)
+					logs "temp: #{temp}"
+				else
+					logs "#faild: faild to set keyword"
+					break
+				end
 			end
 		end
 
