@@ -13,6 +13,7 @@ require 'yaml'
 require 'sqlite3'
 require 'fileutils'
 require 'pp'
+require 'optparse'
 
 
 def logs(msg)
@@ -36,7 +37,7 @@ class TwitterBot
 
 	def initialize(path = RootDir + "config.yaml")
 		@config_file = path
-		@debug = nil
+		@debug = false
 		load_config
 	end
 
@@ -70,7 +71,7 @@ class TwitterBot
 		)
 	end
 
-	def post(text, in_reply_to = nil, in_reply_to_status_id = nil, time = nil)
+	def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false)
 
 		text = "@#{in_reply_to} #{text}" if in_reply_to
 		text += " - " + Time.now.to_s if time
@@ -94,7 +95,8 @@ class TwitterBot
 	end
 
 	def connect
-		(1..30).each do |i|
+		i = 0
+		while i < 30 do
 			begin
 				# http://dev.twitter.com/pages/user_streams
 				uri = URI.parse('https://userstream.twitter.com/2/user.json')
@@ -121,6 +123,10 @@ class TwitterBot
 
 							# textパラメータを含まないものはスキップして次へ
 							next unless status['text']
+							if i > 0
+								logs "UserStreamAPIに再接続しました。"
+								i = 0
+							end
 							yield status
 						end
 					end
@@ -130,6 +136,7 @@ class TwitterBot
 				#	Timeout::Errorも明示的に捕捉する必要あるらしい。
 				#	現状だと、あらゆる例外をキャッチしてしまう。
 			rescue Timeout::Error, StandardError
+				i += 1
 				logs "#error: #{$!}"
 				sleep_time = (i > 10) ? 5*i : 10
 				logs "#{sleep_time}秒後に再接続します。(#{i}回目)"
@@ -155,18 +162,25 @@ class TwitterBot
 
 	def open_database
 		db = SQLite3::Database.new(@files[:db])
-		db.busy_timeout(10000)
+		db.busy_timeout(100000)
 		begin
 			db.execute("create table markov (id integer primary key, head text, body text, tail text)")
 			db.execute("create table stock (id integer primary key, head text)")
+			db.execute("create index head on markov(head)")
+			db.execute("create index head_and_body on markov(head,body)")
+			db.execute("create index stock_head on stock(head)")
 		rescue SQLite3::SQLException
 			#logs "既にテーブルがあるようです"
 		else
 			logs "テーブルを新規作成しました。"
 		end
 		yield db
-		limit_database(db, "markov", 1000000)
-		limit_database(db, "stock", 30)
+		begin
+			limit_database(db, "markov", 1000000)
+			limit_database(db, "stock", 30)
+		rescue SQLite3::BusyException
+			logs "SQLite3::BusyException"
+		end
 		db.close
 	end
 
@@ -206,14 +220,14 @@ class TwitterBot
 
 		logs "#begin: generate_phrase"
 
-		raise "keyword is nil!" if keyword == nil
+		raise "keyword is nil!" if !keyword | keyword.empty?
 
 		text = t1 = t2 = ""
 
 		open_database do |db|
 			for i in 1 .. 5
 				list = Array.new
-				db.execute("select body from markov where head = '#{keyword}'") do |body|
+				db.execute("select body from markov where head = '#{keyword.escape}'") do |body|
 					list.push(body[0].to_s)
 				end
 
@@ -229,7 +243,7 @@ class TwitterBot
 
 				loop do
 					list = Array.new
-					db.execute("select body, tail from markov where head = '#{t1}' and body = '#{t2}'") do |body, tail|
+					db.execute("select body, tail from markov where head = '#{t1.escape}' and body = '#{t2.escape}'") do |body, tail|
 						list.push({:body => body.to_s, :tail => tail.to_s})
 					end
 
@@ -324,7 +338,7 @@ class String
 	def fin?(node)
 		return true unless node.next.surface
 		return true if node.next.surface.to_s.toutf8 =~ /(EOS| |　|!|！|,|、|[.]|。)/
-			return nil
+			return false
 	end
 
 	#
@@ -358,7 +372,7 @@ class String
 			node = node.next
 		end
 
-		buf.gsub("だのだ", "なのだ").gsub("のだよ", "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").gsub(/なのだ [.,]/, "").gsub("なのだ.なのだ", "なのだ")
+		buf.gsub("だのだ", "なのだ").gsub("のだよ", "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").gsub(/なのだ [.,]/, "").gsub("なのだ.なのだ", "なのだ").gsub(/(俺|私|わたし|おら)/, "僕")
 	end	
 
 	#
@@ -369,7 +383,7 @@ class String
 		hash.each do |item|
 			return true if item == self
 		end
-		return nil
+		return false
 	end
 
 	#
@@ -385,6 +399,14 @@ class String
 			end
 		end
 		return nil
+	end
+
+	#
+	# SQlite3 でシングルクオートはエスケープしないとダメらしい
+	#
+
+	def escape
+		self.gsub(/'/, "''")
 	end
 
 end

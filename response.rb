@@ -10,15 +10,11 @@ daigorou = TwitterBot.new
 #  オプション解析
 #
 
-ARGV.each do |arg|
-	if arg =~ /(^-)(\w*)/
-		case $2
-		when 'd', 'debug'
-			daigorou.debug = true
-		end
-	end
-end
+opt = OptionParser.new
+opt.on('-d', '--debug') {|v| daigorou.debug = true }
+opt.parse!(ARGV)
 
+logs "#Debug Mode" if daigorou.debug
 
 #
 #	TLを取得
@@ -31,7 +27,7 @@ daigorou.connect do |status|
 	id = status['id']
 
 	# textが無効だったら次へ
-	next if text == nil || text == ''
+	next if !text || text == ''
 
 	str_update = nil
 
@@ -44,7 +40,7 @@ daigorou.connect do |status|
 	end
 
 	# メンションが来たら
-	if text.index("@#{daigorou.name}") && !(text =~ /^RT/) && str_update == nil
+	if text.index("@#{daigorou.name}") && !(text =~ /^RT/) && !str_update
 		# adminからのコマンド受付
 		if screen_name.in_hash?(daigorou.config['admin'])
 			if text.index("kill")
@@ -63,15 +59,25 @@ daigorou.connect do |status|
 		# メンションに対して、単語に反応してリプライ
 		str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
 
+		# 計算機能
+		temp = text.gsub(/^@#{daigorou.name}/, "")
+		if (temp =~ /^[\d*+-.\/() ]+$/)
+			begin
+				eval "str_update = (#{temp}).to_s"
+			rescue SyntaxError
+				# str_update = nil
+			end
+		end
+
 		# マルコフ連鎖で返事を生成
-		if str_update == nil
+		if !str_update
 			temp = text
 			mecab = MeCab::Tagger.new('-O wakati')
 			# keyword: マルコフ連鎖の起点となる単語
-			keyword = ["僕", nil].sample
+			keyword = ["俺","僕", nil].sample
 			# 75%の確率で、リプライに含まれる名詞or形容詞からキーワードを設定する。
 			# 25%の確率で、上で生成した文章からさらに同様にしてキーワードを設定する。
-			f = (rand(4) == 0) && keyword == nil ? 1 : 0
+			f = (rand(4) == 0) && !keyword ? 1 : 0
 			(0 .. f).each do |i|
 				node =  mecab.parseToNode(temp.filter)
 				list = Array.new
@@ -94,8 +100,8 @@ daigorou.connect do |status|
 			end
 		end
 
-		if str_update == nil
-			if keyword != nil && keyword != '' && keyword != ' ' && f == 0
+		if !str_update
+			if keyword && !keyword.empty? && keyword != ' ' && f == 0
 				str_update = [ "#{keyword}って、何なのだ？", "#{keyword}って何？ 美味しいの(U^ω^)？なのだ！？", "#{keyword}!?" ].sample
 			elsif
 				str_update = daigorou.config['WordsOnFaildReply'].sample
