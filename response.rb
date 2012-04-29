@@ -36,7 +36,7 @@ daigorou.connect do |status|
 
 	# 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
 	if !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/)
-		str_update = text.search_table(daigorou.config['ReplayTable']['all']) 
+		str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
 	end
 
 	# メンションが来たら
@@ -71,6 +71,7 @@ daigorou.connect do |status|
 
 		# マルコフ連鎖で返事を生成
 		if !str_update
+				
 			temp = text
 			mecab = MeCab::Tagger.new('-O wakati')
 			# keyword: マルコフ連鎖の起点となる単語
@@ -88,8 +89,8 @@ daigorou.connect do |status|
 					end
 					node = node.next
 				end
-				if list.size != 0
-					keyword = list.sample
+				if list.size != 0 | keyword
+					keyword = list.sample if list.size != 0
 					logs "keyword(#{i}): [#{keyword}]"
 					str_update = temp = daigorou.generate_phrase(keyword)
 					logs "temp: #{temp}"
