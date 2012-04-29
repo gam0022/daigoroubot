@@ -89,7 +89,7 @@ daigorou.connect do |status|
 					end
 					node = node.next
 				end
-				if list.size != 0 | keyword
+				if list.size != 0 || keyword
 					keyword = list.sample if list.size != 0
 					logs "keyword(#{i}): [#{keyword}]"
 					str_update = temp = daigorou.generate_phrase(keyword)
