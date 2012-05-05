@@ -47,7 +47,7 @@ class TwitterBot
 		end
 
 		# config
-		@name = @config["name"]
+		@name = @config['name']
 		@files = {
 			:db		=> RootDir + @config['files']['db'],
 			:cer	=> RootDir + @config['files']['cer']
@@ -69,6 +69,7 @@ class TwitterBot
 			@OAUTH_TOEKN,
 			@OAUTH_TOEKN_SECRET
 		)
+
 	end
 
 	def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false)
@@ -144,6 +145,33 @@ class TwitterBot
 			end
 		end
 		logs "#error: Twitterに接続できないため、connectを終了します。"
+	end
+
+	#
+	#	Users[key] の要素を、name から id に変換して返す
+	#
+
+	def users(key)
+		result = Array.new
+		temp = @config['Users'][key]
+		return result unless temp
+		temp.each do |val|
+			case val.class.to_s
+			when "Fixnum"
+				result.push val
+			when "String"
+				begin
+					result.push Twitter.user(val).id
+				rescue
+					logs "#error: Not found such a user[#{val}]"
+				end
+			when "NilClass"
+				#
+			else
+				raise "to_id"
+			end
+		end
+		return result
 	end
 
 	#
@@ -409,4 +437,13 @@ class String
 		self.gsub(/'/, "''")
 	end
 
+end
+
+class Fixnum
+	def in_hash?(hash)
+		hash.each do |item|
+			return true if item == self
+		end
+		return false
+	end
 end

@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 $:.unshift File.dirname(__FILE__)
 require 'common.rb'
+require 'twitter'
 
 # start message
 logs "#start: response.rb"
@@ -33,6 +34,12 @@ daigorou.connect do |status|
 
 	# タイムライン表示
 	logs "[@#{screen_name}] #{text}"
+
+	# ignoreリストに追加されたユーザの発言なら無視する
+	if status['user']['id'].in_hash?(daigorou.users("ignore"))
+		logs "	>>ignore"
+		next
+	end
 
 	# 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
 	if !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/)

@@ -10,11 +10,12 @@ daigorou = TwitterBot.new
 Twitter.configure do |configer|
   configer.consumer_key				= daigorou.CONSUMER_KEY			 
   configer.consumer_secret		= daigorou.CONSUMER_SECRET	 
-  configer.oauth_token				= daigorou.OAUTH_TOEKN			 
+  configer.oauth_token				= daigorou.OAUTH_TOEKN
   configer.oauth_token_secret	= daigorou.OAUTH_TOEKN_SECRET
 end
 
-new_follow = Twitter.follower_ids.ids - Twitter.friend_ids.ids - Twitter.friendships_outgoing.ids
+
+new_follow = ( daigorou.users('follow') | Twitter.follower_ids.ids ) - Twitter.friend_ids.ids - Twitter.friendships_outgoing.ids - daigorou.users('remove')
 
 new_follow.each do |id|
 	begin
@@ -28,7 +29,7 @@ new_follow.each do |id|
 	end
 end
 
-new_unfollow = Twitter.friend_ids.ids - Twitter.follower_ids.ids - daigorou.config['kataomoi_ids']
+new_unfollow = ( daigorou.users('remove') & Twitter.friend_ids.ids ) | (Twitter.friend_ids.ids - Twitter.follower_ids.ids ) - daigorou.users('follow')
 
 new_unfollow.each do |id|
 	begin
