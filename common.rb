@@ -14,6 +14,7 @@ require 'sqlite3'
 require 'fileutils'
 require 'pp'
 require 'optparse'
+require 'twitter'
 
 
 def logs(msg)
@@ -69,6 +70,13 @@ class TwitterBot
 			@OAUTH_TOEKN,
 			@OAUTH_TOEKN_SECRET
 		)
+
+		Twitter.configure do |configer|
+			configer.consumer_key				= @CONSUMER_KEY			 
+			configer.consumer_secret		= @CONSUMER_SECRET	 
+			configer.oauth_token				= @OAUTH_TOEKN
+			configer.oauth_token_secret	= @OAUTH_TOEKN_SECRET
+		end
 
 	end
 
@@ -365,7 +373,7 @@ class String
 
 	def fin?(node)
 		return true unless node.next.surface
-		return true if node.next.surface.to_s.toutf8 =~ /(EOS| |　|!|！|,|、|[.]|。)/
+		return true if node.next.surface.to_s.toutf8 =~ /(EOS| |　|!|！|[.]|。)/
 			return false
 	end
 

@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 $:.unshift File.dirname(__FILE__)
 require 'common.rb'
-require 'twitter'
 
 # start message
 logs "#start: response.rb"
@@ -35,14 +34,14 @@ daigorou.connect do |status|
 	# タイムライン表示
 	logs "[@#{screen_name}] #{text}"
 
-	# ignoreリストに追加されたユーザの発言なら無視する
-	if status['user']['id'].in_hash?(daigorou.users("ignore"))
+	# ignoreリストに追加されたユーザか自分自身の発言なら無視する
+	if status['user']['id'].in_hash?(daigorou.users("ignore")) || screen_name == daigorou.name
 		logs "	>>ignore"
 		next
 	end
 
 	# 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
-	if !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/)
+	if !(text =~ /^RT/) && ( !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/) )
 		str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
 	end
 
@@ -122,12 +121,18 @@ daigorou.connect do |status|
 	#	リプライ
 	#
 
-	if str_update && screen_name != daigorou.name
+	if str_update
 		daigorou.post(str_update, screen_name, id)
 	end
 
+	#
+	#	RT
+	#
+	
+	Twitter.retweet(id) if text.index("#daigoroubot") && 
+
 	# 学習させる
-	daigorou.learn(text.filter) if screen_name != daigorou.name && !daigorou.debug
+	daigorou.learn(text.filter) if !daigorou.debug
 
 	#
 	#	寝る

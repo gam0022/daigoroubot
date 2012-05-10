@@ -48,7 +48,7 @@ if regular
 				faild = nil
 				keyword = keywords.sample
 				stock.each do |word|
-					if keyword == word || keyword =~ /EOS$/
+					if keyword == word || keyword =~ /EOS$/ || keyword =~ /^\w+$/
 						faild = true
 						logs "#faild: set to keyword [#{word}]"
 						break

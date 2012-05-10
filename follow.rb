@@ -1,19 +1,10 @@
 # -*- encoding: utf-8 -*-
 $:.unshift File.dirname(__FILE__)
 require 'common.rb'
-require 'twitter'
 
 # start message
 logs "#start: follow.rb"
 daigorou = TwitterBot.new
-
-Twitter.configure do |configer|
-  configer.consumer_key				= daigorou.CONSUMER_KEY			 
-  configer.consumer_secret		= daigorou.CONSUMER_SECRET	 
-  configer.oauth_token				= daigorou.OAUTH_TOEKN
-  configer.oauth_token_secret	= daigorou.OAUTH_TOEKN_SECRET
-end
-
 
 new_follow = ( daigorou.users('follow') | Twitter.follower_ids.ids ) - Twitter.friend_ids.ids - Twitter.friendships_outgoing.ids - daigorou.users('remove')
 
