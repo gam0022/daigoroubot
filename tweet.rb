@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 $:.unshift File.dirname(__FILE__)
-require 'common.rb'
+require 'twitterbot.rb'
 
 # stat message
 logs "#start: tweet.rb"
