@@ -129,7 +129,7 @@ daigorou.connect do |status|
 	#	RT
 	#
 	
-	Twitter.retweet(id) if text.index("#daigoroubot") && 
+	Twitter.retweet(id) if text.index("#daigoroubot") && !daigorou.debug
 
 	# 学習させる
 	daigorou.learn(text.filter) if !daigorou.debug
