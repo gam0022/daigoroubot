@@ -77,14 +77,16 @@ daigorou.connect do |status|
 
 		# 天気予報
 		if !str_update && text =~ /(天気|てんき|weather)/
-			day = text =~ /(今日|きょう|today)/ ? "today" : text =~ /(明日|あした|tomorrow)/ ? "tomorrow" : 
-				text =~ /(明後日|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
+			day = 
+			text =~ /(今日|本日|きょう|ほんじつ|today)/ ? "today" : 
+			text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : 
+			text =~ /(明後日|(2|２|二|弐)日後|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
 			str_update = daigorou.weather(day)
 		end
 
 		# マルコフ連鎖で返事を生成
 		if !str_update
-				
+
 			temp = text
 			mecab = MeCab::Tagger.new('-O wakati')
 			# keyword: マルコフ連鎖の起点となる単語
@@ -135,7 +137,7 @@ daigorou.connect do |status|
 	#
 	#	RT
 	#
-	
+
 	Twitter.retweet(id) if text.index("#daigoroubot") && !daigorou.debug
 
 	# 学習させる
