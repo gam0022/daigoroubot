@@ -37,9 +37,9 @@ class TwitterBot
 		:CONSUMER_KEY, :CONSUMER_SECRET, :OAUTH_TOEKN, :OAUTH_TOEKN_SECRET,
 		:consumer, :token
 
-	RootDir = File.dirname(__FILE__) + '/'
+	BaseDir = File.dirname(__FILE__) + '/'
 
-	def initialize(path = RootDir + "config.yaml")
+	def initialize(path = BaseDir + "config.yaml")
 		@config_file = path
 		@debug = false
 		load_config
@@ -53,8 +53,8 @@ class TwitterBot
 		# config
 		@name = @config['name']
 		@files = {
-			:db		=> RootDir + @config['files']['db'],
-			:cer	=> RootDir + @config['files']['cer']
+			:db		=> BaseDir + @config['files']['db'],
+			:cer	=> BaseDir + @config['files']['cer']
 		}
 
 		@CONSUMER_KEY				= @config['oauth']['ConsumerKey']
@@ -321,9 +321,11 @@ class TwitterBot
 			uri = URI("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
 			xml = Net::HTTP.get(uri)
 			doc = Document.new(xml)
-			celsius = doc.elements['/lwws/temperature/max/celsius'].get_text
+			tmax = doc.elements['/lwws/temperature/max/celsius'].get_text
+			tmin = doc.elements['/lwws/temperature/min/celsius'].get_text
 			text = "#{hash[day]}のつくばの天気は、#{doc.elements['/lwws/telop'].get_text}なのだ。"
-			text +=  "最高#{celsius}℃なのだ。http://goo.gl/IPAuV" if celsius
+			text +=  "最高気温#{tmax}℃なのだ。http://goo.gl/IPAuV" if tmax
+			text +=  "最低気温#{tmin}℃なのだ。http://goo.gl/IPAuV" if tmin
 		rescue
 			return nil
 		end
@@ -468,7 +470,7 @@ class String
 	end
 
 	#
-	# SQlite3 でシングルクオートはエスケープしないとダメらしい
+	#	SQlite3 でシングルクオートはエスケープしないとダメらしい
 	#
 
 	def escape
