@@ -77,7 +77,7 @@ daigorou.connect do |status|
 
 		# 天気予報
 		if !str_update && text =~ /(天気|てんき|weather)/
-			day = text =~ /(今日|きょう|today)/ ? "today" : text =~ /(明日|tomorrow)/ ? "tomorrow" : 
+			day = text =~ /(今日|きょう|today)/ ? "today" : text =~ /(明日|あした|tomorrow)/ ? "tomorrow" : 
 				text =~ /(明後日|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
 			str_update = daigorou.weather(day)
 		end
