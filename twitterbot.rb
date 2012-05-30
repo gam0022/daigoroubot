@@ -8,6 +8,7 @@ require 'open-uri'
 require 'kconv'
 require 'oauth'
 require 'net/https'
+require 'net/http'
 require "json/pure"
 require 'yaml'
 require 'sqlite3'
@@ -15,6 +16,8 @@ require 'fileutils'
 require 'pp'
 require 'optparse'
 require 'twitter'
+require "rexml/document"
+include REXML
 
 
 def logs(msg)
@@ -301,6 +304,30 @@ class TwitterBot
 		logs "生成時間:#{(Time.now - start).to_s}秒"
 		return text.gobi
 
+	end
+
+	#
+	#	天気予報機能
+	#
+
+	def weather(day=nil)
+		# dayが指定されていなければ設定する
+		day = Time.now.hour <= 15 ? "today" : "tomorrow" unless day
+
+		# 英語=>日本語の変換
+		hash = {"today" => "今日", "tomorrow" => "明日", "dayaftertomorrow" => "明後日"}
+
+		begin
+			uri = URI("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
+			xml = Net::HTTP.get(uri)
+			doc = Document.new(xml)
+			celsius = doc.elements['/lwws/temperature/max/celsius'].get_text
+			text = "#{hash[day]}のつくばの天気は、#{doc.elements['/lwws/telop'].get_text}なのだ。"
+			text +=  "最高#{celsius}℃なのだ。http://goo.gl/IPAuV" if celsius
+		rescue
+			return nil
+		end
+		return text
 	end
 
 	#

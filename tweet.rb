@@ -8,6 +8,7 @@ daigorou = TwitterBot.new
 
 regular = false	#ランダムなつぶやき
 time = false		#時間を付加
+weather = false
 #daigorou.debug = nil	#デバッグモード
 keyword = nil
 
@@ -21,6 +22,7 @@ str_update = nil
 opt = OptionParser.new
 opt.on('-r', '--regular') {|v| regular = true}
 opt.on('-t', '--time') {|v| time = true}
+opt.on('-w', '--weather') {|v| weather = true}
 opt.on('-d', '--debug') {|v| daigorou.debug = true }
 opt.on('-k VAL', '--keyword VAL') {|v| 
 	keyword = v
@@ -72,6 +74,13 @@ if regular
 	end
 
 end
+
+#
+#	天気
+#
+
+str_update = daigorou.weather if weather
+
 
 #
 #	ツイート
