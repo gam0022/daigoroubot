@@ -8,7 +8,6 @@ require 'open-uri'
 require 'kconv'
 require 'oauth'
 require 'net/https'
-require 'net/http'
 require "json/pure"
 require 'yaml'
 require 'sqlite3'
@@ -318,14 +317,20 @@ class TwitterBot
 		hash = {"today" => "今日", "tomorrow" => "明日", "dayaftertomorrow" => "明後日"}
 
 		begin
-			uri = URI("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
-			xml = Net::HTTP.get(uri)
-			doc = Document.new(xml)
+			f = open("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
+			doc = Document.new(f.read)
+			f.close
+
+			return nil unless (telop = doc.elements['/lwws/telop'].get_text)
 			tmax = doc.elements['/lwws/temperature/max/celsius'].get_text
 			tmin = doc.elements['/lwws/temperature/min/celsius'].get_text
-			text = "#{hash[day]}のつくばの天気は、#{doc.elements['/lwws/telop'].get_text}なのだ。"
-			text +=  "最高気温#{tmax}℃なのだ。http://goo.gl/IPAuV" if tmax
-			text +=  "最低気温#{tmin}℃なのだ。http://goo.gl/IPAuV" if tmin
+
+			text = "#{hash[day]}のつくばの天気は、#{telop}なのだ。"
+			text += "最高気温#{tmax}℃" if tmax
+			text += "、" if tmax && tmin
+			text += "最低気温#{tmin}℃" if tmin
+			text += "なのだ。" if tmax || tmin
+			text += "http://goo.gl/IPAuV"
 		rescue
 			return nil
 		end
