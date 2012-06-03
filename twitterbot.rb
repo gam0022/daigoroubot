@@ -73,6 +73,8 @@ class TwitterBot
 			@OAUTH_TOEKN_SECRET
 		)
 
+		@_users = Hash.new
+
 		Twitter.configure do |configer|
 			configer.consumer_key				= @CONSUMER_KEY			 
 			configer.consumer_secret		= @CONSUMER_SECRET	 
@@ -162,6 +164,11 @@ class TwitterBot
 	#
 
 	def users(key)
+		return @_users[key] if @_users[key]
+		@_users[key] = users_core(key)
+	end
+
+	def users_core(key)
 		result = Array.new
 		temp = @config['Users'][key]
 		return result unless temp
