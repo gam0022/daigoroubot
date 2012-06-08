@@ -65,9 +65,9 @@ daigorou.connect do |status|
 		# メンションに対して、単語に反応してリプライ
 		str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
 
-		# 計算機能
+		# 計算機能(四則演算、冪乗、論理演算子、ビット演算子、剰余に対応)
 		temp = text.gsub(/^@#{daigorou.name}/, "")
-		if (temp =~ /^[\d*+-.\/() ]+$/)
+		if (temp =~ /^[\d*+-.\/%&|^() ]+$/)
 			begin
 				eval "str_update = (#{temp}).to_s"
 			rescue SyntaxError
@@ -77,11 +77,15 @@ daigorou.connect do |status|
 
 		# 天気予報
 		if !str_update && text =~ /(天気|てんき|weather)/
-			day = 
-			text =~ /(今日|本日|きょう|ほんじつ|today)/ ? "today" : 
-			text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : 
-			text =~ /(明後日|(2|２|二|弐)日後|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
-			str_update = daigorou.weather(day)
+			day =
+				text =~ /(今日|本日|きょう|ほんじつ|today)/ ? "today" : 
+				text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : 
+				text =~ /(明後日|(2|２|二|弐)日後|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
+
+			str_update = 
+				day || (text =~ /(筑波|つくば)/) || !(text =~ /の/) ? 
+				daigorou.weather(day) : 
+				"ごめんなのだ（Ｕ´・ω・`)…　(今日|明日|明後日)のつくばの天気にしか対応してないのだ…"
 		end
 
 		# マルコフ連鎖で返事を生成
