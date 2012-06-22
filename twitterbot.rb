@@ -85,7 +85,7 @@ class TwitterBot
 
 	end
 
-	def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false)
+	def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10)
 
 		text = "@#{in_reply_to} #{text}" if in_reply_to
 		text += " - " + Time.now.to_s if time
@@ -93,18 +93,19 @@ class TwitterBot
 		if @debug
 			logs "\tdebug>>#{text}"
 		else
-			(1..10).each do |i|
+			(1..try).each do |i|
 				begin
 					if in_reply_to_status_id
-						@token.post('/statuses/update.json', :status => text, :in_reply_to_status_id => in_reply_to_status_id)
+						@token.post('/statuses/update.json', :status => text, :in_reply_to_status_id => in_reply_to_status_id).value
 					else
-						@token.post('/statuses/update.json', :status => text)
+						@token.post('/statuses/update.json', :status => text).value
 					end
-				rescue Timeout::Error, StandardError
+				rescue Timeout::Error, StandardError, Net::HTTPServerException
 					logs "#error: 投稿エラー発生! #{i}回目 [#{text}]"
-					text += ' '
-					if text.length > 140
+					text += '　'
+					if text.length > 140 || i>=try
 						logs "#error: 投稿できまでんでした!!"
+						break
 					end
 				else
 					break
@@ -386,8 +387,9 @@ class String
 
 	def convert_operator
 		self.toutf8.
-			gsub(/[=は?？]+$/, "").
+			gsub(/[\n\r]+/, "").
 			gsub(/\s/, "").delete("　").
+			gsub(/[=は?？]+$/, "").
 			tr("０-９", "0-9").
 			tr("（）", "()").
 			gsub(/(mod|余り|あまり)/, "%").gsub(/(×|かける|掛ける)/, "*").gsub(/(÷|わる|割る)/, "/").
