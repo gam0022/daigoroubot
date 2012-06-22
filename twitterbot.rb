@@ -17,6 +17,7 @@ require 'optparse'
 require 'twitter'
 require "rexml/document"
 include REXML
+require "thread"
 
 
 def logs(msg)
@@ -92,17 +93,24 @@ class TwitterBot
 		if @debug
 			logs "\tdebug>>#{text}"
 		else
-			begin
-				if in_reply_to_status_id
-					@token.post('/statuses/update.json', :status => text, :in_reply_to_status_id => in_reply_to_status_id)
+			(1..10).each do |i|
+				begin
+					if in_reply_to_status_id
+						@token.post('/statuses/update.json', :status => text, :in_reply_to_status_id => in_reply_to_status_id)
+					else
+						@token.post('/statuses/update.json', :status => text)
+					end
+				rescue Timeout::Error, StandardError
+					logs "#error: 投稿エラー発生! #{i}回目 [#{text}]"
+					text += ' '
+					if text.length > 140
+						logs "#error: 投稿できまでんでした!!"
+					end
 				else
-					@token.post('/statuses/update.json', :status => text)
+					break
 				end
-			rescue Timeout::Error, StandardError
-				logs "#error: 投稿エラー発生! [#{text}]"
-			ensure
-				logs "\t>>#{text}"
 			end
+			logs "\t>>#{text}"
 		end
 
 	end
@@ -312,37 +320,6 @@ class TwitterBot
 
 	end
 
-	#
-	#	天気予報機能
-	#
-
-	def weather(day=nil)
-		# dayが指定されていなければ設定する
-		day = Time.now.hour <= 15 ? "today" : "tomorrow" unless day
-
-		# 英語=>日本語の変換
-		hash = {"today" => "今日", "tomorrow" => "明日", "dayaftertomorrow" => "明後日"}
-
-		begin
-			f = open("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
-			doc = Document.new(f.read)
-			f.close
-
-			return nil unless (telop = doc.elements['/lwws/telop'].get_text)
-			tmax = doc.elements['/lwws/temperature/max/celsius'].get_text
-			tmin = doc.elements['/lwws/temperature/min/celsius'].get_text
-
-			text = "#{hash[day]}のつくばの天気は、#{telop}なのだ。"
-			text += "最高気温#{tmax}℃" if tmax
-			text += "、" if tmax && tmin
-			text += "最低気温#{tmin}℃" if tmin
-			text += "なのだ。" if tmax || tmin
-			text += "http://goo.gl/IPAuV"
-		rescue
-			return nil
-		end
-		return text
-	end
 
 	#
 	#	keywords と stock を取得/追加
@@ -391,7 +368,7 @@ class String
 	#
 
 	def eappend(text)
-		if text =~ /^\w+$/ && self != ''
+		if text =~ /^\w+$/ && !self.empty?
 			return "#{self} #{text}"
 		else
 			return "#{self}#{text}"
@@ -405,6 +382,18 @@ class String
 	def filter
 		# エンコードをUTF-8 にして、改行とURLや#ハッシュダグや@メンションは消す
 		self.toutf8.gsub(/(\n|https?:\S+|from https?:\S+|#\w+|#|@\S+|^RT|なのだ|のだ)/, "")
+	end
+
+	def convert_operator
+		self.toutf8.
+			gsub(/[=は?？]+$/, "").
+			gsub(/\s/, "").delete("　").
+			tr("０-９", "0-9").
+			tr("（）", "()").
+			gsub(/(mod|余り|あまり)/, "%").gsub(/(×|かける|掛ける)/, "*").gsub(/(÷|わる|割る)/, "/").
+			gsub(/(＋|たす|足す)/, "+").gsub(/(ー|ひく|引く)/, "-").
+			gsub(/(&amp;|＆)/, "&").gsub("｜", "|").gsub(/(xor|＾)/, "^").
+			gsub("and", "&&").gsub("or", "||").gsub("not", "!")
 	end
 
 
@@ -497,5 +486,72 @@ class Fixnum
 			return true if item == self
 		end
 		return false
+	end
+end
+
+#
+#	天気予報機能
+#
+
+def weather(day=nil)
+	# dayが指定されていなければ設定する
+	day = Time.now.hour <= 15 ? "today" : "tomorrow" unless day
+
+	# 英語=>日本語の変換
+	hash = {"today" => "今日", "tomorrow" => "明日", "dayaftertomorrow" => "明後日"}
+
+	begin
+		f = open("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
+		doc = Document.new(f.read)
+		f.close
+
+		return nil unless (telop = doc.elements['/lwws/telop'].get_text)
+		tmax = doc.elements['/lwws/temperature/max/celsius'].get_text
+		tmin = doc.elements['/lwws/temperature/min/celsius'].get_text
+
+		text = "#{hash[day]}のつくばの天気は、#{telop}なのだ。"
+		text += "最高気温#{tmax}℃" if tmax
+		text += "、" if tmax && tmin
+		text += "最低気温#{tmin}℃" if tmin
+		text += "なのだ。" if tmax || tmin
+		text += "http://goo.gl/IPAuV"
+	rescue
+		return nil
+	end
+	return text
+end
+
+#
+#	セーフレベルを指定して実行
+#
+
+def safe(level)
+	result = nil
+	Thread.start {
+		$SAFE = level
+		result = yield
+	}.join
+	result
+end
+
+#
+#	計算機能
+#
+
+def calculate(formula)
+	#return nil unless formula =~ /^[\d*+-.\/%&|^()!~<>]+$/
+	return nil if formula =~ /sleep/
+
+	include Math
+	begin
+		safe(4) {
+			eval "(#{formula}).to_s"
+		}
+	rescue ZeroDivisionError
+		"ゼロ除算やめて!!なのだっ！（Ｕ>ω<;）"
+	rescue SecurityError
+		"その操作は禁止されているのだ(U´・ω・`)"
+	rescue SyntaxError, StandardError
+		nil
 	end
 end

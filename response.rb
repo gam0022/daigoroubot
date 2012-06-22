@@ -65,15 +65,8 @@ daigorou.connect do |status|
 		# メンションに対して、単語に反応してリプライ
 		str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
 
-		# 計算機能(四則演算、冪乗、論理演算子、ビット演算子、剰余に対応)
-		temp = text.gsub(/^@#{daigorou.name}/, "")
-		if (temp =~ /^[\d*+-.\/%&|^() ]+$/)
-			begin
-				eval "str_update = (#{temp}).to_s"
-			rescue SyntaxError
-				# str_update = nil
-			end
-		end
+		# 電卓機能
+		str_update = calculate(text.filter.convert_operator) unless str_update
 
 		# 天気予報
 		if !str_update && text =~ /(天気|てんき|weather)/
@@ -84,7 +77,7 @@ daigorou.connect do |status|
 
 			str_update = 
 				day || (text =~ /(筑波|つくば)/) || !(text =~ /の/) ? 
-				daigorou.weather(day) : 
+				weather(day) : 
 				"ごめんなのだ（Ｕ´・ω・`)…　(今日|明日|明後日)のつくばの天気にしか対応してないのだ…"
 		end
 
@@ -113,6 +106,7 @@ daigorou.connect do |status|
 					logs "keyword(#{i}): [#{keyword}]"
 					str_update = temp = daigorou.generate_phrase(keyword)
 					logs "temp: #{temp}"
+					break unless temp
 				else
 					logs "#faild: faild to set keyword"
 					break
