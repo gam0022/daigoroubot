@@ -6,12 +6,12 @@ require 'twitterbot.rb'
 logs "#start: tweet.rb"
 daigorou = TwitterBot.new
 
-regular = false	#ランダムなつぶやき
-time = false		#時間を付加
-weather = false
-#daigorou.debug = nil	#デバッグモード
-keyword = nil
+# 動作フラグ(ランダムなつぶやき、時間を付加、天気予報)
+Flag = Struct.new(:regular, :time, :weather)
+flag = Flag.new(false, false, false)
 
+# キーワード(マルコフ連鎖の起点)
+keyword = nil
 
 #
 #	オプション解析
@@ -20,13 +20,13 @@ keyword = nil
 str_update = nil
 
 opt = OptionParser.new
-opt.on('-r', '--regular') {|v| regular = true}
-opt.on('-t', '--time') {|v| time = true}
-opt.on('-w', '--weather') {|v| weather = true}
+opt.on('-r', '--regular') {|v| flag.regular = true}
+opt.on('-t', '--time') {|v| flag.time = true}
+opt.on('-w', '--weather') {|v| flag.weather = true}
 opt.on('-d', '--debug') {|v| daigorou.debug = true }
 opt.on('-k VAL', '--keyword VAL') {|v| 
 	keyword = v
-	regular = true
+	flag.regular = true
 }
 opt.parse!(ARGV)
 str_update = ARGV[0]
@@ -37,7 +37,7 @@ logs "#Debug Mode" if daigorou.debug
 #	定期的なつぶやき
 #
 
-if regular
+if flag.regular
 
 	str_update = nil
 
@@ -79,7 +79,7 @@ end
 #	天気
 #
 
-str_update = daigorou.weather if weather
+str_update = weather if flag.weather
 
 
 #
@@ -87,7 +87,7 @@ str_update = daigorou.weather if weather
 #
 
 if str_update
-	daigorou.post(str_update, false, nil, time)
+	daigorou.post(str_update, false, nil, flag.time, 1)
 else
 	logs "#error: faild to generate str_update"
 end
