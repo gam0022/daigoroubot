@@ -357,12 +357,27 @@ class TwitterBot
 end
 
 
+module StringFixnum
+
+	#
+	#	テキストが指定した配列の要素のどれかと一致するならtrueを返す
+	#
+
+	def in_hash?(hash)
+		hash.each do |item|
+			return true if item == self
+		end
+		return false
+	end
+end
 
 #
 #	String拡張
 #
 
 class String
+
+	include StringFixnum
 
 	#
 	#	英単語の場合、スペースをはさんで結合
@@ -387,8 +402,7 @@ class String
 
 	def convert_operator
 		self.toutf8.
-			gsub(/[\n\r]+/, "").
-			gsub(/\s/, "").delete("　").
+			gsub(/[\n\r]+/, "").delete("　").
 			gsub(/[=は?？]+$/, "").
 			tr("０-９", "0-9").
 			tr("（）", "()").
@@ -446,16 +460,6 @@ class String
 			gsub(/(「|」|『|』)/, " ")
 	end	
 
-	#
-	#	テキストが指定した配列の要素のどれかと一致するならtrueを返す
-	#
-
-	def in_hash?(hash)
-		hash.each do |item|
-			return true if item == self
-		end
-		return false
-	end
 
 	#
 	#	テキストにテーブル()の要素が含まれていたなら、そのテーブルのペアの要素をランダムに返す
@@ -483,13 +487,9 @@ class String
 end
 
 class Fixnum
-	def in_hash?(hash)
-		hash.each do |item|
-			return true if item == self
-		end
-		return false
-	end
+	include StringFixnum
 end
+
 
 #
 #	天気予報機能
