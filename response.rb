@@ -26,6 +26,8 @@ daigorou.connect do |status|
 	screen_name = status['user']['screen_name']
 	id = status['id']
 
+  try = 5
+
 	# textが無効だったら次へ
 	next if !text || text == ''
 
@@ -42,7 +44,7 @@ daigorou.connect do |status|
 
 	# 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
 	if !(text =~ /^RT/) && ( !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/) )
-		str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
+		try = 1 if str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
 	end
 
 	# メンションが来たら
@@ -129,7 +131,7 @@ daigorou.connect do |status|
 	#
 
 	if str_update
-		daigorou.post(str_update, screen_name, id)
+		daigorou.post(str_update, screen_name, id, nil, try)
 	end
 
 	#
