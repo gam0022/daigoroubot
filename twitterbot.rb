@@ -325,8 +325,18 @@ class TwitterBot
 	#
 	#	keywords と stock を取得/追加
 	#
-
+  
 	def get_keywords
+		list = Array.new
+		open_database do |db|
+			db.execute("select body from markov where head = '' order by id desc limit 100") do |body|
+				list.push body[0]
+			end
+		end
+		return list
+	end
+
+	def _get_keywords
 		list = Array.new
 		open_database do |db|
 			db.execute("select body from markov where head = ''") do |body|
