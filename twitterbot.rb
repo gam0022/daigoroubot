@@ -50,6 +50,8 @@ class TwitterBot
 			@config = YAML.load(io)
 		end
 
+    pp @config
+
 		# config
 		@name = @config['name']
 		@files = {
@@ -96,9 +98,9 @@ class TwitterBot
 			(1..try).each do |i|
 				begin
 					if in_reply_to_status_id
-						@token.post('/statuses/update.json', :status => text, :in_reply_to_status_id => in_reply_to_status_id).value
+            Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
 					else
-						@token.post('/statuses/update.json', :status => text).value
+            Twitter.update(text)
 					end
 				rescue Timeout::Error, StandardError, Net::HTTPServerException
 					logs "#error: 投稿エラー発生! #{i}回目 [#{text}]"
