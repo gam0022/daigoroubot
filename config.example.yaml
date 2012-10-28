@@ -9,10 +9,10 @@ files:
   cer: "ca.cer"
 
 oauth:
-  ConsumerKey:       "3BnJ7sHuenVIADin3uvHZg"
-  ConsumerSecret:    "rGGpPkkVopLKzB88QqvWuxZGBtbC4QkjihBQZxdA"
-  OauthToken:        "423412461-69N3wSZ0QWWeOjN8OKWJQCuYDoj8pUCyouBtrIgY"
-  OauthTokenSecret:  "UmdRWjivaM1xNhqYDRWMFmgflMrXnPcfn7vYq6qupo"
+  ConsumerKey:       
+  ConsumerSecret:    
+  OauthToken:        
+  OauthTokenSecret:  
 
 ReplayTable:
   all:
