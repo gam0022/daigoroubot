@@ -50,8 +50,6 @@ class TwitterBot
 			@config = YAML.load(io)
 		end
 
-    pp @config
-
 		# config
 		@name = @config['name']
 		@files = {
@@ -84,6 +82,11 @@ class TwitterBot
 			configer.oauth_token				= @OAUTH_TOEKN
 			configer.oauth_token_secret	= @OAUTH_TOEKN_SECRET
 		end
+
+    # 計算機能のエイリアスの正規表現のパターンを生成
+    unless @config['Calculate']['alias_regexp']
+      @config['Calculate']['alias_regexp'] = @config['Calculate']['alias'].keys.join('|')
+    end
 
 	end
 
@@ -366,6 +369,29 @@ class TwitterBot
 		end
 	end
 
+  # 複雑な動作を実行
+  def do_complex(text, type='mention')
+    return nil unless @config['Complex'][type]
+
+    @config['Complex'][type].each do |cmd|
+      r = Regexp.new(cmd[0]) 
+      if r =~ text
+        begin
+          return Sandbox.safe(4) {
+            eval cmd[1]
+          }
+        rescue ZeroDivisionError
+          return "ゼロ除算やめて!!なのだっ！（Ｕ>ω<;）"
+        rescue SecurityError
+          return "その操作は禁止されているのだ(U´・ω・`)"
+        rescue SyntaxError, StandardError
+          nil
+        end
+      end
+    end
+    return nil
+  end
+
 end
 
 
@@ -409,20 +435,16 @@ class String
 
 	def filter
 		# エンコードをUTF-8 にして、改行とURLや#ハッシュダグや@メンションは消す
-		self.toutf8.gsub(/(\n|https?:\S+|from https?:\S+|#\w+|#|@\S+|^RT|なのだ|のだ)/, "")
+		self.gsub(/(\n|https?:\S+|from https?:\S+|#\w+|#|@\S+|^RT|なのだ|のだ)/, "")
 	end
 
-	def convert_operator
-		self.toutf8.
-			gsub(/[\n\r]+/, "").delete("　").
-			gsub(/[=は?？]+$/, "").
-			tr("０-９", "0-9").
-			tr("（）", "()").
-			gsub(/(mod|余り|あまり)/, "%").gsub(/(×|かける|掛ける)/, "*").gsub(/(÷|わる|割る)/, "/").
-			gsub(/(＋|たす|足す)/, "+").gsub(/(ー|ひく|引く)/, "-").
-			gsub(/(&amp;|＆)/, "&").gsub("｜", "|").gsub(/(xor|＾)/, "^").
-			gsub("and", "&&").gsub("or", "||").gsub("not", "!")
-	end
+  def convert_operator(config)
+    self.
+      gsub(/[\n\r]+/, "").delete("　").
+      gsub(/[=は?？]+$/, "").
+      tr("０-９", "0-9").tr("（）", "()").
+      gsub(/(#{config['Calculate']['alias_regexp']})/, config['Calculate']['alias'])
+  end
 
 
 	#
@@ -536,36 +558,48 @@ def weather(day=nil)
 end
 
 #
-#	セーフレベルを指定して実行
+# Sandbox
 #
 
-def safe(level)
-	result = nil
-	Thread.start {
-		$SAFE = level
-		result = yield
-	}.join
-	result
-end
+class Sandbox
 
-#
-#	計算機能
-#
+  include Math
+  require 'unicode_math'
 
-def calculate(formula)
-	#return nil unless formula =~ /^[\d*+-.\/%&|^()!~<>]+$/
-	return nil if formula =~ /sleep/
+  #
+  #	セーフレベルを指定して実行
+  #
 
-	include Math
-	begin
-		safe(4) {
-			eval "(#{formula}).to_s"
-		}
-	rescue ZeroDivisionError
-		"ゼロ除算やめて!!なのだっ！（Ｕ>ω<;）"
-	rescue SecurityError
-		"その操作は禁止されているのだ(U´・ω・`)"
-	rescue SyntaxError, StandardError
-		nil
-	end
+  def Sandbox.safe(level)
+    result = nil
+    Thread.start {
+      $SAFE = level
+      result = yield
+    }.join
+    result
+  end
+
+  #
+  #	計算機能
+  #
+
+  def calculate(formula, env='')
+    #return nil unless formula =~ /^[\d*+-.\/%&|^()!~<>]+$/
+    return nil if formula =~ /sleep/
+    
+    eval env
+
+    begin
+      Sandbox.safe(4) {
+        eval "(#{formula}).to_s"
+      }
+    rescue ZeroDivisionError
+      "ゼロ除算やめて!!なのだっ！（Ｕ>ω<;）"
+    rescue SecurityError
+      "その操作は禁止されているのだ(U´・ω・`)"
+    rescue SyntaxError, StandardError
+      nil
+    end
+  end
+
 end

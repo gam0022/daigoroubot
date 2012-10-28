@@ -5,6 +5,7 @@ require 'twitterbot.rb'
 # start message
 logs "#start: response.rb"
 daigorou = TwitterBot.new
+sandbox = Sandbox.new
 
 #
 #  オプション解析
@@ -47,6 +48,9 @@ daigorou.connect do |status|
 		try = 1 if str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
 	end
 
+  # 複雑な機能
+  str_update = daigorou.do_complex(text.filter, 'all') unless str_update
+
 	# メンションが来たら
 	if text.index("@#{daigorou.name}") && !(text =~ /^RT/) && !str_update
 		# adminからのコマンド受付
@@ -68,7 +72,7 @@ daigorou.connect do |status|
 		str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
 
 		# 電卓機能
-		str_update = calculate(text.filter.convert_operator) unless str_update
+		str_update = sandbox.calculate(text.filter.convert_operator(daigorou.config), daigorou.config['Calculate']['env']) unless str_update
 
 		# 天気予報
 		if !str_update && text =~ /(天気|てんき|weather)/
@@ -82,6 +86,9 @@ daigorou.connect do |status|
 				weather(day) : 
 				"ごめんなのだ（Ｕ´・ω・`)…　(今日|明日|明後日)のつくばの天気にしか対応してないのだ…"
 		end
+
+    # 複雑な機能
+    str_update = daigorou.do_complex(text.filter) unless str_update
 
 		# マルコフ連鎖で返事を生成
 		if !str_update
