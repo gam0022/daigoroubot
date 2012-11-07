@@ -435,7 +435,7 @@ class String
 
 	def filter
 		# エンコードをUTF-8 にして、改行とURLや#ハッシュダグや@メンションは消す
-		self.gsub(/(\n|https?:\S+|from https?:\S+|#\w+|#|@\S+|^RT|なのだ|のだ)/, "")
+		self.gsub(/(\n|https?:\S+|from https?:\S+|#\w+|#|@\S+|^RT|なのだ|のだ)/, "").gsub('&amp;', '&').gsub('&lt;', '<').gsub('&gt;', '>')
 	end
 
   def convert_operator(config)

@@ -18,41 +18,28 @@ opt.parse!(ARGV)
 logs "#Debug Mode" if daigorou.debug
 
 #
-#	TLを取得
+# 返事を生成
 #
 
-daigorou.connect do |status|				
+def generate_replay(status, daigorou, sandbox)
 
 	text = status['text']
+  text_ = text.filter
 	screen_name = status['user']['screen_name']
 	id = status['id']
 
-  try = 5
-
-	# textが無効だったら次へ
-	next if !text || text == ''
-
-	str_update = nil
-
-	# タイムライン表示
-	logs "[@#{screen_name}] #{text}"
-
-	# ignoreリストに追加されたユーザか自分自身の発言なら無視する
-	if status['user']['id'].in_hash?(daigorou.users("ignore")) || screen_name == daigorou.name
-		logs "	>>ignore"
-		next
-	end
-
 	# 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
 	if !(text =~ /^RT/) && ( !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/) )
-		try = 1 if str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
+		str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
+    return str_update, 1 if str_update
 	end
 
   # 複雑な機能
-  str_update = daigorou.do_complex(text.filter, 'all') unless str_update
+  str_update = daigorou.do_complex(text_, 'all')
+  return str_update if str_update
 
 	# メンションが来たら
-	if text.index("@#{daigorou.name}") && !(text =~ /^RT/) && !str_update
+	if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
 		# adminからのコマンド受付
 		if screen_name.in_hash?(daigorou.config['admin'])
 			if text.index("kill")
@@ -64,18 +51,21 @@ daigorou.connect do |status|
 				str_update = "はい！設定再読み込みしますのだ！ #daigoroubot_reload_config"
 				daigorou.post(str_update, screen_name, id, true)
 				daigorou.load_config
-				next
+				#next
+        return nil
 			end
 		end
 
 		# メンションに対して、単語に反応してリプライ
 		str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
+    return str_update if str_update
 
 		# 電卓機能
-		str_update = sandbox.calculate(text.filter.convert_operator(daigorou.config), daigorou.config['Calculate']['env']) unless str_update
+		str_update = sandbox.calculate(text_.convert_operator(daigorou.config), daigorou.config['Calculate']['env'])
+    return str_update if str_update
 
 		# 天気予報
-		if !str_update && text =~ /(天気|てんき|weather)/
+		if text =~ /(天気|てんき|weather)/
 			day =
 				text =~ /(今日|本日|きょう|ほんじつ|today)/ ? "today" : 
 				text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : 
@@ -85,53 +75,80 @@ daigorou.connect do |status|
 				day || (text =~ /(筑波|つくば)/) || !(text =~ /の/) ? 
 				weather(day) : 
 				"ごめんなのだ（Ｕ´・ω・`)…　(今日|明日|明後日)のつくばの天気にしか対応してないのだ…"
+      return str_update if str_update
 		end
 
     # 複雑な機能
-    str_update = daigorou.do_complex(text.filter) unless str_update
+    str_update = daigorou.do_complex(text_)
+    return str_update if str_update
 
-		# マルコフ連鎖で返事を生成
-		if !str_update
+    # マルコフ連鎖で返事を生成
+    temp = text
+    mecab = MeCab::Tagger.new('-O wakati')
+    # keyword: マルコフ連鎖の起点となる単語
+    keyword = ["俺","僕", nil].sample
+    # 75%の確率で、リプライに含まれる名詞or形容詞からキーワードを設定する。
+    # 25%の確率で、上で生成した文章からさらに同様にしてキーワードを設定する。
+    f = (rand(4) == 0) && !keyword ? 1 : 0
+    (0 .. f).each do |i|
+      node =  mecab.parseToNode(temp.filter)
+      list = Array.new
+      while node do
+        # 含まれる名詞・形容詞を抜き出す
+        if node.feature.to_s.toutf8 =~ /(名詞|形容詞)/ && !(node.surface.to_s.toutf8 =~ /(ー|EOS)/)
+          list.push node.surface.toutf8
+        end
+        node = node.next
+      end
+      if list.size != 0 || keyword
+        keyword = list.sample if list.size != 0
+        logs "keyword(#{i}): [#{keyword}]"
+        str_update = temp = daigorou.generate_phrase(keyword)
+        logs "temp: #{temp}"
+        break unless temp
+      else
+        logs "#faild: faild to set keyword"
+        break
+      end
+    end
+    return str_update if str_update
 
-			temp = text
-			mecab = MeCab::Tagger.new('-O wakati')
-			# keyword: マルコフ連鎖の起点となる単語
-			keyword = ["俺","僕", nil].sample
-			# 75%の確率で、リプライに含まれる名詞or形容詞からキーワードを設定する。
-			# 25%の確率で、上で生成した文章からさらに同様にしてキーワードを設定する。
-			f = (rand(4) == 0) && !keyword ? 1 : 0
-			(0 .. f).each do |i|
-				node =  mecab.parseToNode(temp.filter)
-				list = Array.new
-				while node do
-					# 含まれる名詞・形容詞を抜き出す
-					if node.feature.to_s.toutf8 =~ /(名詞|形容詞)/ && !(node.surface.to_s.toutf8 =~ /(ー|EOS)/)
-						list.push node.surface.toutf8
-					end
-					node = node.next
-				end
-				if list.size != 0 || keyword
-					keyword = list.sample if list.size != 0
-					logs "keyword(#{i}): [#{keyword}]"
-					str_update = temp = daigorou.generate_phrase(keyword)
-					logs "temp: #{temp}"
-					break unless temp
-				else
-					logs "#faild: faild to set keyword"
-					break
-				end
-			end
-		end
+    if keyword && !keyword.empty? && keyword != ' ' && f == 0
+      return [ "#{keyword}って、何なのだ？", "#{keyword}って何？ 美味しいの(U^ω^)？なのだ！？", "#{keyword}!?" ].sample
+    else
+      return daigorou.config['WordsOnFaildReply'].sample
+    end
 
-		if !str_update
-			if keyword && !keyword.empty? && keyword != ' ' && f == 0
-				str_update = [ "#{keyword}って、何なのだ？", "#{keyword}って何？ 美味しいの(U^ω^)？なのだ！？", "#{keyword}!?" ].sample
-			elsif
-				str_update = daigorou.config['WordsOnFaildReply'].sample
-			end
-		end
+    return nil
 
 	end
+end
+
+#
+#	TLを取得
+#
+
+daigorou.connect do |status|				
+
+	text = status['text']
+	screen_name = status['user']['screen_name']
+	id = status['id']
+
+	# textが無効だったら次へ
+	next if !text || text == ''
+
+	# タイムライン表示
+	logs "[@#{screen_name}] #{text}"
+
+	# ignoreリストに追加されたユーザか自分自身の発言なら無視する
+	if status['user']['id'].in_hash?(daigorou.users("ignore")) || screen_name == daigorou.name
+		logs "	>>ignore"
+		next
+	end
+
+  # 返事を生成する
+	str_update,try = generate_replay(status, daigorou, sandbox)
+  try = 5 unless try
 
 	#
 	#	リプライ
