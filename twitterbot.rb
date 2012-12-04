@@ -536,6 +536,23 @@ def weather(day=nil)
 end
 
 #
+# http://stackoverflow.com/questions/2045324/executing-user-supplied-ruby-code-on-a-web-server
+#
+
+class BlankSlate
+
+  instance_methods.each do |name|
+    class_eval do
+      unless name =~ /^__|^instance_eval$|^binding$|^object_id$/
+        undef_method name
+      end
+    end
+  end
+
+end
+
+
+#
 # Sandbox
 #
 
@@ -550,15 +567,21 @@ class Sandbox
 
   def Sandbox.safe(level=4, limit=1)
     result = nil
-    Thread.start {
+    clean_room = BlankSlate.new
+    t = Thread.start {
       $SAFE = level
-      result = yield
-    }.join(limit).kill
+      clean_room.instance_eval do
+        result = yield
+      end
+    }
+    t.join(limit)
+    t.kill
     result
   end
 
   #
   #	計算機能
+  #	TODO: TwitterBotクラスに組み込む
   #
 
   def calculate(formula, config)
@@ -586,6 +609,7 @@ class Sandbox
 
   #
   # 複雑な動作を実行
+  #	TODO: TwitterBotクラスに組み込む
   #
   
   def function(text, config, type='mention')
