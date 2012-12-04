@@ -126,10 +126,10 @@ def generate_replay(status, daigorou, sandbox)
 end
 
 #
-#	TLを取得
+# TLを取得
 #
 
-daigorou.connect do |status|		
+daigorou.connect do |status|    
 
   text = status['text']
   screen_name = status['user']['screen_name']
@@ -179,7 +179,7 @@ daigorou.connect do |status|
   try = 5 unless try
 
   #
-  #	リプライ
+  # リプライ
   #
 
   if str_update
@@ -203,6 +203,6 @@ daigorou.connect do |status|
     str_update = "もう寝るのだ（Ｕ‐ω‐）...zzZZZ ~♪  #sleep"
     daigorou.post(str_update, nil, nil, true)
     exit
-  end	
+  end 
 
 end
