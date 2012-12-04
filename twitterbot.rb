@@ -548,12 +548,12 @@ class Sandbox
   #	セーフレベルを指定して実行
   #
 
-  def Sandbox.safe(level=4, limit=2)
+  def Sandbox.safe(level=4, limit=1)
     result = nil
     Thread.start {
       $SAFE = level
       result = yield
-    }.join(limit)
+    }.join(limit).kill
     result
   end
 
@@ -561,14 +561,16 @@ class Sandbox
   #	計算機能
   #
 
-  def calculate(formula, env='')
+  def calculate(formula, config)
     #return nil unless formula =~ /^[\d*+-.\/%&|^()!~<>]+$/
+    formula = formula.convert_operator(config)
     return nil if formula =~ /sleep/
     
+    env = config['Calculate']['env']
     eval env
 
     begin
-      Sandbox.safe(4) {
+      return Sandbox.safe(config['Sandbox']['level'], config['Sandbox']['timeout']) {
         eval "(#{formula}).to_s"
       }
     rescue ZeroDivisionError
@@ -593,7 +595,7 @@ class Sandbox
       r = Regexp.new(cmd[0]) 
       if r =~ text
         begin
-          return Sandbox.safe(4) {
+          return Sandbox.safe(config['Sandbox']['level'], config['Sandbox']['timeout']) {
             eval cmd[1]
           }
         rescue ZeroDivisionError

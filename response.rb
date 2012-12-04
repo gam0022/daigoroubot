@@ -6,6 +6,7 @@ require 'twitterbot.rb'
 logs "#start: response.rb"
 daigorou = TwitterBot.new
 sandbox = Sandbox.new
+users = {}
 
 #
 #  オプション解析
@@ -23,60 +24,60 @@ logs "#Debug Mode" if daigorou.debug
 
 def generate_replay(status, daigorou, sandbox)
 
-	text = status['text']
+  text = status['text']
   text_ = text.filter
-	screen_name = status['user']['screen_name']
-	id = status['id']
+  screen_name = status['user']['screen_name']
+  id = status['id']
 
-	# 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
-	if !(text =~ /^RT/) && ( !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/) )
-		str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
+  # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
+  if !(text =~ /^RT/) && ( !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/) )
+    str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
     return str_update, 1 if str_update
-	end
+  end
 
   # 複雑な機能
   str_update = sandbox.function(text_, daigorou.config, 'all')
   return str_update if str_update
 
-	# メンションが来たら
-	if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
-		# adminからのコマンド受付
-		if screen_name.in_hash?(daigorou.config['admin'])
-			if text.index("kill")
-				str_update = "はい。死にますのだ（ＵTωT) #daigoroubot_death"
-				daigorou.post(str_update, screen_name, id, true)
-				exit
-			end
-			if text.index("reload")
-				str_update = "はい！設定再読み込みしますのだ！ #daigoroubot_reload_config"
-				daigorou.post(str_update, screen_name, id, true)
-				daigorou.load_config
-				#next
+  # メンションが来たら
+  if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
+    # adminからのコマンド受付
+    if screen_name.in_hash?(daigorou.config['admin'])
+      if text.index("kill")
+        str_update = "はい。死にますのだ（ＵTωT) #daigoroubot_death"
+        daigorou.post(str_update, screen_name, id, true)
+        exit
+      end
+      if text.index("reload")
+        str_update = "はい！設定再読み込みしますのだ！ #daigoroubot_reload_config"
+        daigorou.post(str_update, screen_name, id, true)
+        daigorou.load_config
+        #next
         return nil
-			end
-		end
+      end
+    end
 
-		# メンションに対して、単語に反応してリプライ
-		str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
+    # メンションに対して、単語に反応してリプライ
+    str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
     return str_update if str_update
 
-		# 電卓機能
-		str_update = sandbox.calculate(text_.convert_operator(daigorou.config), daigorou.config['Calculate']['env'])
+    # 電卓機能
+    str_update = sandbox.calculate(text_, daigorou.config)
     return str_update if str_update
 
-		# 天気予報
-		if text =~ /(天気|てんき|weather)/
-			day =
-				text =~ /(今日|本日|きょう|ほんじつ|today)/ ? "today" : 
-				text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : 
-				text =~ /(明後日|(2|２|二|弐)日後|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
+    # 天気予報
+    if text =~ /(天気|てんき|weather)/
+      day =
+      text =~ /(今日|本日|きょう|ほんじつ|today)/ ? "today" : 
+      text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : 
+      text =~ /(明後日|(2|２|二|弐)日後|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
 
-			str_update = 
-				day || (text =~ /(筑波|つくば)/) || !(text =~ /の/) ? 
-				weather(day) : 
-				"ごめんなのだ（Ｕ´・ω・`)…　(今日|明日|明後日)のつくばの天気にしか対応してないのだ…"
+      str_update = 
+        day || (text =~ /(筑波|つくば)/) || !(text =~ /の/) ? 
+        weather(day) : 
+        "ごめんなのだ（Ｕ´・ω・`)…　(今日|明日|明後日)のつくばの天気にしか対応してないのだ…"
       return str_update if str_update
-		end
+    end
 
     # 複雑な機能
     str_update = sandbox.function(text_, daigorou.config)
@@ -121,60 +122,87 @@ def generate_replay(status, daigorou, sandbox)
 
     return nil
 
-	end
+  end
 end
 
 #
 #	TLを取得
 #
 
-daigorou.connect do |status|				
+daigorou.connect do |status|		
 
-	text = status['text']
-	screen_name = status['user']['screen_name']
-	id = status['id']
+  text = status['text']
+  screen_name = status['user']['screen_name']
+  id = status['id']
 
-	# textが無効だったら次へ
-	next if !text || text == ''
+  # textが無効だったら次へ
+  next if !text || text == ''
 
-	# タイムライン表示
-	logs "[@#{screen_name}] #{text}"
+  # タイムライン表示
+  logs "[@#{screen_name}] #{text}"
 
-	# ignoreリストに追加されたユーザか自分自身の発言なら無視する
-	if status['user']['id'].in_hash?(daigorou.users("ignore")) || screen_name == daigorou.name
-		logs "	>>ignore"
-		next
-	end
+  # ignoreリストに追加されたユーザか自分自身の発言なら無視する
+  if status['user']['id'].in_hash?(daigorou.users("ignore")) || screen_name == daigorou.name
+    logs "\t>>ignore"
+    next
+  end
+  
+  #
+  # リプ爆撃対策
+  #
+
+  if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
+    interval= daigorou.config['MentionLimit']['interval']
+    count   = daigorou.config['MentionLimit']['count']
+    release = daigorou.config['MentionLimit']['release']
+
+    # interval秒間隔でcount回数リプライがある場合、release秒間返信しない
+    if !users[screen_name] || 
+      (users[screen_name]['mentioned']['last'] + interval < Time.now && users[screen_name]['mentioned']['count'] < count) ||
+      users[screen_name]['mentioned']['last'] + release < Time.now 
+
+      users[screen_name] = {} unless users[screen_name]
+      users[screen_name]['mentioned'] = {'count' => 0}
+    end
+
+    users[screen_name]['mentioned']['count'] += 1
+    users[screen_name]['mentioned']['last'] = Time.now
+    logs "count:#{users[screen_name]['mentioned']['count']}"
+    if users[screen_name]['mentioned']['count'] >= count
+      logs "\t>>ignore(規制)"
+      next
+    end
+  end
 
   # 返事を生成する
-	str_update,try = generate_replay(status, daigorou, sandbox)
+  str_update,try = generate_replay(status, daigorou, sandbox)
   try = 5 unless try
 
-	#
-	#	リプライ
-	#
+  #
+  #	リプライ
+  #
 
-	if str_update
-		daigorou.post(str_update, screen_name, id, nil, try)
-	end
+  if str_update
+    daigorou.post(str_update, screen_name, id, nil, try)
+  end
 
-	#
-	#	RT
-	#
+  #
+  # RT
+  #
 
-	Twitter.retweet(id) if text.index("#daigoroubot") && !daigorou.debug
+  Twitter.retweet(id) if text.index("#daigoroubot") && !daigorou.debug
 
-	# 学習させる
-	daigorou.learn(text.filter) if !daigorou.debug
+  # 学習させる
+  daigorou.learn(text.filter) if !daigorou.debug
 
-	#
-	#	寝る
-	#
+  #
+  # 寝る
+  #
 
-	if Time.now.hour >= 2 && Time.now.hour < 6 && !daigorou.debug
-		str_update = "もう寝るのだ（Ｕ‐ω‐）...zzZZZ ~♪  #sleep"
-		daigorou.post(str_update, nil, nil, true)
-		exit
-	end	
+  if Time.now.hour >= 2 && Time.now.hour < 6 && !daigorou.debug
+    str_update = "もう寝るのだ（Ｕ‐ω‐）...zzZZZ ~♪  #sleep"
+    daigorou.post(str_update, nil, nil, true)
+    exit
+  end	
 
 end
