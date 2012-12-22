@@ -69,8 +69,8 @@ def generate_replay(status, daigorou, sandbox)
     if text =~ /(天気|てんき|weather)/
       day =
       text =~ /(今日|本日|きょう|ほんじつ|today)/ ? "today" : 
-      text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : 
-      text =~ /(明後日|(2|２|二|弐)日後|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : nil
+      text =~ /(明後日|(2|２|二|弐)日後|あさって|day after tomorrow|dayaftertomorrow)/ ? "dayaftertomorrow" : 
+      text =~ /(明日|(1|１|一|壱)日後|あした|あす|tomorrow)/ ? "tomorrow" : nil
 
       str_update = 
         day || (text =~ /(筑波|つくば)/) || !(text =~ /の/) ? 
