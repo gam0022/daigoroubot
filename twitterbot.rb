@@ -586,7 +586,7 @@ class Sandbox
 
   def calculate(formula, config)
     #return nil unless formula =~ /^[\d*+-.\/%&|^()!~<>]+$/
-    p formula = formula.convert_operator(config)
+    logs "formula:" + formula = formula.convert_operator(config)
     return nil if formula =~ /sleep/
     
     env = config['Calculate']['env']
