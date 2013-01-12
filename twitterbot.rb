@@ -84,8 +84,8 @@ class TwitterBot
     end
 
     # 計算機能のエイリアスの正規表現のパターンを生成
-    unless @config['Calculate']['alias_regexp']
-      @config['Calculate']['alias_regexp'] = @config['Calculate']['alias'].keys.join('|')
+    unless @config['Calculate']['alias_pattern']
+      @config['Calculate']['alias_pattern'] = @config['Calculate']['alias'].keys.join('|')
     end
 
   end
@@ -400,11 +400,7 @@ class String
   #
 
   def eappend(text)
-    if text =~ /^\w+$/ && !self.empty?
-      return "#{self} #{text}"
-    else
-      return "#{self}#{text}"
-    end
+    (text =~ /^\w+$/ && !self.empty?) ? "#{self} #{text}" : "#{self}#{text}"
   end
 
   #
@@ -417,11 +413,15 @@ class String
   end
 
   def convert_operator(config)
-    self.
+    result = self.
       gsub(/[\n\r]+/, "").delete("　").
       gsub(/[=は?？]+$/, "").
       tr("０-９", "0-9").tr("（）", "()").
-      gsub(/(#{config['Calculate']['alias_regexp']})/, config['Calculate']['alias'])
+      gsub(/(#{config['Calculate']['alias_pattern']})/, config['Calculate']['alias'])
+    config['Calculate']['alias_regexp'].each do |key, val|
+      result.gsub!(Regexp.new(key)) {|m| eval(val)}
+    end
+    result
   end
 
 
@@ -586,7 +586,7 @@ class Sandbox
 
   def calculate(formula, config)
     #return nil unless formula =~ /^[\d*+-.\/%&|^()!~<>]+$/
-    formula = formula.convert_operator(config)
+    p formula = formula.convert_operator(config)
     return nil if formula =~ /sleep/
     
     env = config['Calculate']['env']
