@@ -99,6 +99,9 @@ class TwitterBot
       logs "\tdebug>>#{text}"
     else
       (1..try).each do |i|
+        # 140文字の制限をチェック
+        text = text[0..137] + "(略" if text.length > 140
+
         begin
           if in_reply_to_status_id
             Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
