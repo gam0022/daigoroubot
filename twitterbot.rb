@@ -90,7 +90,7 @@ class TwitterBot
 
   end
 
-  def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10)
+  def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10, fav = true)
 
     text = "@#{in_reply_to} #{text}" if in_reply_to
     text += " - " + Time.now.to_s if time
@@ -105,6 +105,7 @@ class TwitterBot
         begin
           if in_reply_to_status_id
             Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
+            Twitter.favorite(in_reply_to_status_id) if fav && rand(3) == 0
           else
             Twitter.update(text)
           end
@@ -165,9 +166,10 @@ class TwitterBot
         # http://d.hatena.ne.jp/aquarla/20101020/1287540883
         # Timeout::Errorも明示的に捕捉する必要あるらしい。
         # 現状だと、あらゆる例外をキャッチしてしまう。
-      rescue Timeout::Error, StandardError
+      rescue Timeout::Error , StandardError => e
         i += 1
         logs "#error: #{$!}"
+        logs "\t" + e.backtrace.join("\n")
         sleep_time = (i > 10) ? 5*i : 10
         logs "#{sleep_time}秒後に再接続します。(#{i}回目)"
         sleep(sleep_time)
@@ -619,10 +621,11 @@ class Sandbox
     return nil unless config['Function'][type]
 
     config['Function'][type].each do |cmd|
-      r = Regexp.new(cmd[0]) 
-      if r =~ text
+      if Regexp.new(cmd[0]) =~ text
+        level   = config['Sandbox']['level']
+        timeout = config['Sandbox']['timeout']
         begin
-          return Sandbox.safe(config['Sandbox']['level'], config['Sandbox']['timeout']) {
+          return Sandbox.safe(level, timeout) {
             eval cmd[1]
           }
         rescue ZeroDivisionError

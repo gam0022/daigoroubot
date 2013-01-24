@@ -146,7 +146,7 @@ daigorou.connect do |status|
     logs "\t>>ignore"
     next
   end
-  
+
   #
   # リプ爆撃対策
   #
@@ -190,7 +190,23 @@ daigorou.connect do |status|
   # RT
   #
 
-  Twitter.retweet(id) if text.index("#daigoroubot") && !daigorou.debug
+  Twitter.retweet(id) if text.index(Regexp.new(daigorou.config['RetweetKeyword'])) && !daigorou.debug
+
+  #
+  # FAV
+  #
+
+  if text.index("ふぁぼ")
+    if text =~ /(@#{daigorou.name}|大五郎)/
+      # 「ふぁぼ」を含むリプライをふぁぼりまくる
+      Twitter.user_timeline(screen_name, {:count => rand(20)}).drop(1).each do |status| 
+        Twitter.favorite(status.id)
+      end
+    else
+      # 「ふぁぼ」を含むつぶやきをふぁぼる
+      Twitter.favorite(id)
+    end
+  end
 
   # 学習させる
   daigorou.learn(text.filter) if !daigorou.debug
