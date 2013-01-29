@@ -6,15 +6,8 @@
 
 backup/
 test/
+logs/
 
 .DS_Store
 
 MeCab.so
-
-response
-tweet
-
-up
-down
-
-config.yaml
