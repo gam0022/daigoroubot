@@ -10,14 +10,16 @@ require 'oauth'
 require 'net/https'
 require "json/pure"
 require 'yaml'
-require 'sqlite3'
 require 'fileutils'
 require 'pp'
 require 'optparse'
 require 'twitter'
-require "rexml/document"
-include REXML
 require "thread"
+
+require_relative "twitterbot/database"
+require_relative "twitterbot/function"
+require_relative "twitterbot/extensions"
+require_relative "sandbox"
 
 
 def logs(msg)
@@ -34,6 +36,7 @@ class TwitterBot
     :config, :name, 
     :debug, 
     :config_file,
+    :database, :function,
     :CONSUMER_KEY, :CONSUMER_SECRET, :OAUTH_TOEKN, :OAUTH_TOEKN_SECRET,
     :consumer, :token
 
@@ -49,6 +52,7 @@ class TwitterBot
     open(@config_file) do |io|
       @config = YAML.load(io)
     end
+
 
     # config
     @name = @config['name']
@@ -84,9 +88,13 @@ class TwitterBot
     end
 
     # 計算機能のエイリアスの正規表現のパターンを生成
-    unless @config['Calculate']['alias_pattern']
-      @config['Calculate']['alias_pattern'] = @config['Calculate']['alias'].keys.join('|')
+    unless @config['Function']['calculate']['alias_pattern']
+      @config['Function']['calculate']['alias_pattern'] = @config['Function']['calculate']['alias'].keys.join('|')
     end
+    
+    # 内部クラスのインスタンスを初期化
+    @function = Function.new(@config['Function'])
+    @database = DataBase.new(@files[:db])
 
   end
 
@@ -123,6 +131,24 @@ class TwitterBot
       logs "\t>>#{text}"
     end
 
+  end
+
+  def favorite(id)
+    if @debug
+      logs "\tFAV(debug)>>id:#{id}"
+    else
+      logs "\tFAV>>id:#{id}"
+      Twitter.favorite(id)
+    end
+  end
+
+  def retweet(id)
+    if @debug
+      logs "\tRT(debug)>>id:#{id}"
+    else
+      logs "\tRT>>id:#{id}"
+      Twitter.favorite(id)
+    end
   end
 
   def connect
@@ -210,43 +236,6 @@ class TwitterBot
     return result
   end
 
-  #
-  # SQLite3関連
-  #
-
-  def limit_database(db, table, max = 100000)
-    db.execute("select count(*) from #{table}") do |row|
-      if row[0] > max
-        db.execute("select min(id) from #{table}") do |min|
-          db.execute("delete from #{table} where id < #{row[0]-max+min[0]}")
-        end
-      end
-    end
-  end
-
-  def open_database
-    db = SQLite3::Database.new(@files[:db])
-    db.busy_timeout(100000)
-    begin
-      db.execute("create table markov (id integer primary key, head text, body text, tail text)")
-      db.execute("create table stock (id integer primary key, head text)")
-      db.execute("create index head on markov(head)")
-      db.execute("create index head_and_body on markov(head,body)")
-      db.execute("create index stock_head on stock(head)")
-    rescue SQLite3::SQLException
-      #logs "既にテーブルがあるようです"
-    else
-      logs "テーブルを新規作成しました。"
-    end
-    yield db
-    begin
-      limit_database(db, "markov", 1000000)
-      limit_database(db, "stock", 30)
-    rescue SQLite3::BusyException
-      logs "SQLite3::BusyException"
-    end
-    db.close
-  end
 
   #
   # 文章から学習する
@@ -265,7 +254,7 @@ class TwitterBot
       node = node.next
     end
 
-    open_database do |db|
+    @database.open do |db|
       surfaces.each_cons(3) do |a| 
         hash = {:head => a[0], :body => a[1], :tail => a[2]}
         sql = "insert into markov values (:id, :head, :body, :tail)"
@@ -288,10 +277,10 @@ class TwitterBot
 
     text = t1 = t2 = ""
 
-    open_database do |db|
+    @database.open do |db|
       for i in 1 .. 5
         list = Array.new
-        db.execute("select body from markov where head = '#{keyword.escape}'") do |body|
+        db.execute("select body from markov where head = '#{keyword.escape_for_db}'") do |body|
           list.push(body[0].to_s)
         end
 
@@ -307,7 +296,7 @@ class TwitterBot
 
         loop do
           list = Array.new
-          db.execute("select body, tail from markov where head = '#{t1.escape}' and body = '#{t2.escape}'") do |body, tail|
+          db.execute("select body, tail from markov where head = '#{t1.escape_for_db}' and body = '#{t2.escape_for_db}'") do |body, tail|
             list.push({:body => body.to_s, :tail => tail.to_s})
           end
 
@@ -330,316 +319,4 @@ class TwitterBot
     return text.gobi
 
   end
-
-
-  #
-  # keywords と stock を取得/追加
-  #
-  
-  def get_keywords
-    list = Array.new
-    open_database do |db|
-      db.execute("select body from markov where head = '' order by id desc limit 100") do |body|
-        list.push body[0]
-      end
-    end
-    return list
-  end
-
-  def _get_keywords
-    list = Array.new
-    open_database do |db|
-      db.execute("select body from markov where head = ''") do |body|
-        list.push body[0]
-      end
-    end
-    return list
-  end
-
-  def get_stock
-    list = Array.new
-    open_database do |db|
-      db.execute("select head from stock") do |hash|
-        list.push hash[0]
-      end
-    end
-    return list
-  end
-
-  def add_stock(keyword)
-    open_database do |db|
-      hash = {:head => keyword}
-      sql = "insert into stock values (:id, :head)"
-      db.execute(sql, hash)
-    end
-  end
-
-
-end
-
-
-module StringFixnum
-
-  #
-  # テキストが指定した配列の要素のどれかと一致するならtrueを返す
-  #
-
-  def in_hash?(hash)
-    hash.each do |item|
-      return true if item == self
-    end
-    return false
-  end
-end
-
-#
-# String拡張
-#
-
-class String
-
-  include StringFixnum
-
-  #
-  # 英単語の場合、スペースをはさんで結合
-  #
-
-  def eappend(text)
-    (text =~ /^\w+$/ && !self.empty?) ? "#{self} #{text}" : "#{self}#{text}"
-  end
-
-  #
-  # テキストから余分な文字を取り除く
-  #
-
-  def filter
-    # エンコードをUTF-8 にして、改行とURLや#ハッシュダグや@メンションは消す
-    self.gsub(/(\n|https?:\S+|from https?:\S+|#\w+|#|@\S+|^RT|なのだ|のだ)/, "").gsub('&amp;', '&').gsub('&lt;', '<').gsub('&gt;', '>')
-  end
-
-  def convert_operator(config)
-    result = self.
-      gsub(/[\n\r]+/, "").delete("　").
-      gsub(/[=は?？]+$/, "").
-      tr("０-９", "0-9").tr("（）", "()").
-      gsub(/(#{config['Calculate']['alias_pattern']})/, config['Calculate']['alias'])
-    config['Calculate']['alias_regexp'].each do |key, val|
-      result.gsub!(Regexp.new(key)) {|m| eval(val)}
-    end
-    result
-  end
-
-
-  #
-  # 与えられたNodeが文末なのかを判断する
-  #
-
-  def fin?(node)
-    return true unless node.next.surface
-    return true if node.next.surface.to_s.toutf8 =~ /(EOS| |　|!|！|[.]|。)/
-      return false
-  end
-
-  #
-  # 語尾を変化させる
-  #
-
-  def gobi
-
-    # mecabで形態素解析して、 参照テーブルを作る
-    mecab = MeCab::Tagger.new('-O wakati') 
-    node =  mecab.parseToNode(self)
-
-    buf = ""
-
-    while node do
-      feature = node.feature.to_s.toutf8
-      surface = node.surface.to_s.toutf8
-
-      if feature =~ /基本形/ && surface != '基本形' && fin?(node)
-        buf += surface + 'のだ'
-      elsif feature =~ /名詞/ && surface != '名詞' && fin?(node)
-        buf += surface + 'なのだ'
-      elsif feature == '助詞,接続助詞,*,*,か,か,*'
-        buf += surface + 'なのだ'
-      elsif feature == '助詞,終助詞,*,*,か,か,*'
-        buf += surface + 'なのだ'
-      else
-        buf = buf.eappend surface
-      end
-
-      node = node.next
-    end
-
-    buf.gsub("だのだ", "なのだ").gsub("のだよ", "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").
-      gsub(/なのだ [.,]/, "").gsub("なのだ.なのだ", "なのだ").gsub(/(俺|私|わたし|おら)/, "僕").
-      gsub('卒', "´").gsub('& gt;', '>').gsub('& lt;', '<').gsub("しました","したのだ").
-      gsub(/(「|」|『|』)/, " ")
-  end 
-
-
-  #
-  # テキストにテーブル()の要素が含まれていたなら、そのテーブルのペアの要素をランダムに返す
-  #
-
-  def search_table(table)
-    table.each do |set|
-      set[0].each do |word|
-        if self.index(word)
-          return set[1].sample
-        end
-      end
-    end
-    return nil
-  end
-
-  #
-  # SQlite3 でシングルクオートはエスケープしないとダメらしい
-  #
-
-  def escape
-    self.gsub(/'/, "''")
-  end
-
-end
-
-class Fixnum
-  include StringFixnum
-end
-
-
-#
-# 天気予報機能
-#
-
-def weather(day=nil)
-  # dayが指定されていなければ設定する
-  day = Time.now.hour <= 15 ? "today" : "tomorrow" unless day
-
-  # 英語=>日本語の変換
-  hash = {"today" => "今日", "tomorrow" => "明日", "dayaftertomorrow" => "明後日"}
-
-  begin
-    f = open("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
-    doc = Document.new(f.read)
-    f.close
-
-    return nil unless (telop = doc.elements['/lwws/telop'].get_text)
-    tmax = doc.elements['/lwws/temperature/max/celsius'].get_text
-    tmin = doc.elements['/lwws/temperature/min/celsius'].get_text
-
-    text = "#{hash[day]}のつくばの天気は、#{telop}なのだ。"
-    text += "最高気温#{tmax}℃" if tmax
-    text += "、" if tmax && tmin
-    text += "最低気温#{tmin}℃" if tmin
-    text += "なのだ。" if tmax || tmin
-    text += "http://goo.gl/IPAuV"
-  rescue
-    return nil
-  end
-  return text
-end
-
-#
-# http://stackoverflow.com/questions/2045324/executing-user-supplied-ruby-code-on-a-web-server
-#
-
-class BlankSlate
-
-  instance_methods.each do |name|
-    class_eval do
-      unless name =~ /^__|^instance_eval$|^binding$|^object_id$/
-        undef_method name
-      end
-    end
-  end
-
-end
-
-
-#
-# Sandbox
-#
-
-class Sandbox
-
-  include Math
-  require 'unicode_math'
-
-  #
-  # セーフレベルを指定して実行
-  #
-
-  def Sandbox.safe(level=4, limit=1)
-    result = nil
-    clean_room = BlankSlate.new
-    t = Thread.start {
-      $SAFE = level
-      clean_room.instance_eval do
-        result = yield
-      end
-    }
-    t.join(limit)
-    t.kill
-    result
-  end
-
-  #
-  # 計算機能
-  # TODO: TwitterBotクラスに組み込む
-  #
-
-  def calculate(formula, config)
-    #return nil unless formula =~ /^[\d*+-.\/%&|^()!~<>]+$/
-    logs "formula:" + formula = formula.convert_operator(config)
-    return nil if formula =~ /sleep/
-    
-    env = config['Calculate']['env']
-    eval env
-
-    begin
-      return Sandbox.safe(config['Sandbox']['level'], config['Sandbox']['timeout']) {
-        eval "(#{formula}).to_s"
-      }
-    rescue ZeroDivisionError
-      "ゼロ除算やめて!!なのだっ！（Ｕ>ω<;）"
-    rescue SecurityError
-      "その操作は禁止されているのだ(U´・ω・`)"
-    rescue NoMemoryError
-      return "ちょwなのだ（Ｕ>ω<;）"
-    rescue SyntaxError, StandardError
-      nil
-    end
-  end
-
-  #
-  # 複雑な動作を実行
-  # TODO: TwitterBotクラスに組み込む
-  #
-  
-  def function(text, config, type='mention')
-    return nil unless config['Function'][type]
-
-    config['Function'][type].each do |cmd|
-      if Regexp.new(cmd[0]) =~ text
-        level   = config['Sandbox']['level']
-        timeout = config['Sandbox']['timeout']
-        begin
-          return Sandbox.safe(level, timeout) {
-            eval cmd[1]
-          }
-        rescue ZeroDivisionError
-          return "ゼロ除算やめて!!なのだっ！（Ｕ>ω<;）"
-        rescue SecurityError
-          return "その操作は禁止されているのだ(U´・ω・`)"
-        rescue NoMemoryError
-          return "ちょwなのだ（Ｕ>ω<;）"
-        rescue SyntaxError, StandardError
-          nil
-        end
-      end
-    end
-    return nil
-  end
-
 end

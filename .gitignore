@@ -5,6 +5,7 @@
 *.backup
 
 backup/
+test/
 
 .DS_Store
 

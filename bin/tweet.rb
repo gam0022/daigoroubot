@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-require_relative '../lib/twitterbot.rb'
+require_relative '../lib/twitterbot'
 
 # stat message
 logs "#start: tweet.rb"
@@ -41,8 +41,8 @@ if flag.regular
   str_update = nil
 
   if !keyword
-    keywords = daigorou.get_keywords
-    stock = daigorou.get_stock
+    keywords = daigorou.database.get_keywords
+    stock = daigorou.database.get_stock
 
     if keywords.size != 0
       loop do
@@ -63,7 +63,7 @@ if flag.regular
   if keyword
     str_update = daigorou.generate_phrase(keyword)
     logs "keyword: [#{keyword}]"
-    daigorou.add_stock(keyword)
+    daigorou.database.add_stock(keyword)
   else
     logs "#error: faild to set keyword"
   end
@@ -78,7 +78,7 @@ end
 # 天気
 #
 
-str_update = weather if flag.weather
+str_update = daigorou.function.weather if flag.weather
 
 
 #

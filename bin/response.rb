@@ -1,10 +1,9 @@
 # -*- encoding: utf-8 -*-
-require_relative '../lib/twitterbot.rb'
+require_relative '../lib/twitterbot'
 
 # start message
 logs "#start: response.rb"
 daigorou = TwitterBot.new
-sandbox = Sandbox.new
 users = {}
 
 #
@@ -21,7 +20,7 @@ logs "#Debug Mode" if daigorou.debug
 # 返事を生成
 #
 
-def generate_replay(status, daigorou, sandbox)
+def generate_replay(status, daigorou)
 
   text = status['text']
   text_ = text.filter
@@ -35,7 +34,7 @@ def generate_replay(status, daigorou, sandbox)
   end
 
   # 複雑な機能
-  str_update = sandbox.function(text_, daigorou.config, 'all')
+  str_update = daigorou.function.command(text_, 'all')
   return str_update if str_update
 
   # メンションが来たら
@@ -61,7 +60,7 @@ def generate_replay(status, daigorou, sandbox)
     return str_update if str_update
 
     # 電卓機能
-    str_update = sandbox.calculate(text_, daigorou.config)
+    str_update = daigorou.function.calculate(text_)
     return str_update if str_update
 
     # 天気予報
@@ -73,13 +72,13 @@ def generate_replay(status, daigorou, sandbox)
 
       str_update = 
         day || (text =~ /(筑波|つくば)/) || !(text =~ /の/) ? 
-        weather(day) : 
+        daigorou.function.weather(day) : 
         "ごめんなのだ（Ｕ´・ω・`)…　(今日|明日|明後日)のつくばの天気にしか対応してないのだ…"
       return str_update if str_update
     end
 
     # 複雑な機能
-    str_update = sandbox.function(text_, daigorou.config)
+    str_update = daigorou.function.command(text_, 'mention')
     return str_update if str_update
 
     # マルコフ連鎖で返事を生成
@@ -174,7 +173,7 @@ daigorou.connect do |status|
   end
 
   # 返事を生成する
-  str_update,try = generate_replay(status, daigorou, sandbox)
+  str_update,try = generate_replay(status, daigorou)
   try = 5 unless try
 
   #
@@ -189,7 +188,7 @@ daigorou.connect do |status|
   # RT
   #
 
-  Twitter.retweet(id) if text.index(Regexp.new(daigorou.config['RetweetKeyword'])) && !daigorou.debug
+  daigorou.retweet(id) if text.index(Regexp.new(daigorou.config['RetweetKeyword']))
 
   #
   # FAV
@@ -198,12 +197,14 @@ daigorou.connect do |status|
   if text.index("ふぁぼ")
     if text =~ /(@#{daigorou.name}|大五郎)/
       # 「ふぁぼ」を含むリプライをふぁぼりまくる
-      Twitter.user_timeline(screen_name, {:count => rand(20)}).drop(1).each do |status| 
-        Twitter.favorite(status.id)
+      Twitter.user_timeline(screen_name, {:count => rand(40)}).reject do |status|
+        status['favourited']
+      end.each do |status| 
+        daigorou.favorite(status.id)
       end
     else
       # 「ふぁぼ」を含むつぶやきをふぁぼる
-      Twitter.favorite(id)
+      daigorou.favorite(id) unless status['favourited']
     end
   end
 

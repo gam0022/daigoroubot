@@ -1,5 +1,5 @@
 # -*- encoding: utf-8 -*-
-require_relative '../lib/twitterbot.rb'
+require_relative '../lib/twitterbot'
 
 # start message
 logs "#start: follow.rb"
