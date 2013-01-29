@@ -98,7 +98,7 @@ class TwitterBot
 
   end
 
-  def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10, fav = true)
+  def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10)
 
     text = "@#{in_reply_to} #{text}" if in_reply_to
     text += " - " + Time.now.to_s if time
@@ -113,7 +113,6 @@ class TwitterBot
         begin
           if in_reply_to_status_id
             Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
-            Twitter.favorite(in_reply_to_status_id) if fav && rand(3) == 0
           else
             Twitter.update(text)
           end
@@ -133,21 +132,25 @@ class TwitterBot
 
   end
 
-  def favorite(id)
+  def favorite(status)
+    id = status['id']
     if @debug
       logs "\tFAV(debug)>>id:#{id}"
-    else
+    elsif !status['favourited']
       logs "\tFAV>>id:#{id}"
       Twitter.favorite(id)
+      status['favourited'] = true
     end
   end
 
-  def retweet(id)
+  def retweet(status)
+    id = status['id']
     if @debug
       logs "\tRT(debug)>>id:#{id}"
-    else
+    elsif !status['retweeted']
       logs "\tRT>>id:#{id}"
-      Twitter.favorite(id)
+      Twitter.retweet(id)
+      status['retweeted'] = true
     end
   end
 

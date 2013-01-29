@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 class TwitterBot
-
   class Function
 
     # requirements

@@ -182,13 +182,15 @@ daigorou.connect do |status|
 
   if str_update
     daigorou.post(str_update, screen_name, id, nil, try)
+    # たまにふぁぼる
+    daigorou.favorite(status) if rand(3) == 0
   end
 
   #
   # RT
   #
 
-  daigorou.retweet(id) if text.index(Regexp.new(daigorou.config['RetweetKeyword']))
+  daigorou.retweet(status) if text.index(Regexp.new(daigorou.config['RetweetKeyword']))
 
   #
   # FAV
@@ -196,15 +198,13 @@ daigorou.connect do |status|
 
   if text.index("ふぁぼ")
     if text =~ /(@#{daigorou.name}|大五郎)/
-      # 「ふぁぼ」を含むリプライをふぁぼりまくる
-      Twitter.user_timeline(screen_name, {:count => rand(40)}).reject do |status|
-        status['favourited']
-      end.each do |status| 
-        daigorou.favorite(status.id)
+      # 「ふぁぼ」を含むリプライをふぁぼ爆撃する
+      Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
+        daigorou.favorite(status)
       end
     else
       # 「ふぁぼ」を含むつぶやきをふぁぼる
-      daigorou.favorite(id) unless status['favourited']
+      daigorou.favorite(status)
     end
   end
 
