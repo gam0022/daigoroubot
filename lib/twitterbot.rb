@@ -91,7 +91,7 @@ class TwitterBot
     unless @config['Function']['calculate']['alias_pattern']
       @config['Function']['calculate']['alias_pattern'] = @config['Function']['calculate']['alias'].keys.join('|')
     end
-    
+
     # 内部クラスのインスタンスを初期化
     @function = Function.new(@config['Function'])
     @database = DataBase.new(@files[:db])
@@ -210,7 +210,6 @@ class TwitterBot
   #
   # Users[key] の要素を、name から id に変換して返す
   #
-
   def users(key)
     return @_users[key] if @_users[key]
     @_users[key] = users_core(key)
@@ -241,9 +240,8 @@ class TwitterBot
 
 
   #
-  # 文章から学習する
+  # 文章からマルコフ連鎖のデータを学習する
   #
-
   def learn(text)
 
     mecab = MeCab::Tagger.new('-O wakati') 
@@ -268,13 +266,12 @@ class TwitterBot
   end
 
   #
-  # ある単語を起点にして、マルコフ連鎖で文章を生成する
+  # keywordを起点にして、マルコフ連鎖で文章を生成する
   #
-
-  def generate_phrase(keyword)
+  def talk(keyword)
     start = Time.now  
 
-    logs "#begin: generate_phrase"
+    logs "#begin: talk"
 
     raise "keyword is nil!" if !keyword | keyword.empty?
 
@@ -283,7 +280,7 @@ class TwitterBot
     @database.open do |db|
       for i in 1 .. 5
         list = Array.new
-        db.execute("select body from markov where head = '#{keyword.escape_for_db}'") do |body|
+        db.execute("select body from markov where head = '#{keyword.escape_for_sql}'") do |body|
           list.push(body[0].to_s)
         end
 
@@ -299,7 +296,7 @@ class TwitterBot
 
         loop do
           list = Array.new
-          db.execute("select body, tail from markov where head = '#{t1.escape_for_db}' and body = '#{t2.escape_for_db}'") do |body, tail|
+          db.execute("select body, tail from markov where head = '#{t1.escape_for_sql}' and body = '#{t2.escape_for_sql}'") do |body, tail|
             list.push({:body => body.to_s, :tail => tail.to_s})
           end
 
@@ -322,4 +319,50 @@ class TwitterBot
     return text.gobi
 
   end
+
+  #
+  # 与えられたNodeが文末なのかを判断する
+  #
+  def fin?(node)
+    return true unless node.next.surface
+    return true if node.next.surface.to_s.toutf8 =~ /(EOS| |　|!|！|[.]|。)/
+      return false
+  end
+
+  #
+  # 語尾を変化させる
+  #
+  def gobi(text)
+
+    # mecabで形態素解析して、 参照テーブルを作る
+    mecab = MeCab::Tagger.new('-O wakati') 
+    node =  mecab.parseToNode(text)
+
+    buf = ""
+
+    while node do
+      feature = node.feature.to_s.toutf8
+      surface = node.surface.to_s.toutf8
+
+      if feature =~ /基本形/ && surface != '基本形' && fin?(node)
+        buf += surface + 'のだ'
+      elsif feature =~ /名詞/ && surface != '名詞' && fin?(node)
+        buf += surface + 'なのだ'
+      elsif feature == '助詞,接続助詞,*,*,か,か,*'
+        buf += surface + 'なのだ'
+      elsif feature == '助詞,終助詞,*,*,か,か,*'
+        buf += surface + 'なのだ'
+      else
+        buf = buf.eappend surface
+      end
+
+      node = node.next
+    end
+
+    buf.gsub("だのだ", "なのだ").gsub("のだよ", "のだ").gsub(/EOS$/,"").gsub(/EOS $/,"").
+      gsub(/なのだ [.,]/, "").gsub("なのだ.なのだ", "なのだ").gsub(/(俺|私|わたし|おら)/, "僕").
+      gsub('卒', "´").gsub('& gt;', '>').gsub('& lt;', '<').gsub("しました","したのだ").
+      gsub(/(「|」|『|』)/, " ")
+  end 
+
 end

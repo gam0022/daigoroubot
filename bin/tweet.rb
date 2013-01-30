@@ -61,7 +61,7 @@ if flag.regular
   end
 
   if keyword
-    str_update = daigorou.generate_phrase(keyword)
+    str_update = daigorou.talk(keyword)
     logs "keyword: [#{keyword}]"
     daigorou.database.add_stock(keyword)
   else

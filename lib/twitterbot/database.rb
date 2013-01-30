@@ -85,7 +85,7 @@ class TwitterBot
 
     def add_stock(keyword)
       open do |db|
-        hash = {:head => keyword}
+        hash = {:head => keyword.escape_for_sql}
         sql = "insert into stock values (:id, :head)"
         db.execute(sql, hash)
       end

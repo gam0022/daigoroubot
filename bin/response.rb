@@ -17,6 +17,29 @@ opt.parse!(ARGV)
 logs "#Debug Mode" if daigorou.debug
 
 #
+# ここで言うテーブルは次のようなデータ構造となっている
+#
+# - 
+#   - [キーワドA, キーワドA...]
+#   - [返り値A, 返り値A...]
+# - 
+#   - [キーワドB, キーワドB...]
+#   - [返り値B, 返り値B...]
+# -
+#   - ...
+#   - ...
+# ...
+#
+def search_table(table, text)
+  table.each do |row|
+    if row[0].any? {|val| text.index(val)}
+      return row[1].sample
+    end
+  end
+  return nil
+end
+
+#
 # 返事を生成
 #
 
@@ -29,7 +52,7 @@ def generate_replay(status, daigorou)
 
   # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
   if !(text =~ /^RT/) && ( !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/) )
-    str_update = text.gsub(/@daigoroubot/, '').search_table(daigorou.config['ReplayTable']['all']) 
+    str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@"+daigorou.name))
     return str_update, 1 if str_update
   end
 
@@ -40,7 +63,7 @@ def generate_replay(status, daigorou)
   # メンションが来たら
   if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
     # adminからのコマンド受付
-    if screen_name.in_hash?(daigorou.config['admin'])
+    if daigorou.config['admin'].include?(screen_name)
       if text.index("kill")
         str_update = "はい。死にますのだ（ＵTωT) #daigoroubot_death"
         daigorou.post(str_update, screen_name, id, true)
@@ -56,7 +79,7 @@ def generate_replay(status, daigorou)
     end
 
     # メンションに対して、単語に反応してリプライ
-    str_update = text.search_table(daigorou.config['ReplayTable']['mention'])
+    str_update = search_table(daigorou.config['ReplayTable']['mention'], text)
     return str_update if str_update
 
     # 電卓機能
@@ -102,7 +125,7 @@ def generate_replay(status, daigorou)
       if list.size != 0 || keyword
         keyword = list.sample if list.size != 0
         logs "keyword(#{i}): [#{keyword}]"
-        str_update = temp = daigorou.generate_phrase(keyword)
+        str_update = temp = daigorou.talk(keyword)
         logs "temp: #{temp}"
         break unless temp
       else
@@ -126,7 +149,7 @@ end
 #
 # TLを取得
 #
-
+#
 daigorou.connect do |status|    
 
   text = status['text']
@@ -140,7 +163,7 @@ daigorou.connect do |status|
   logs "[@#{screen_name}] #{text}"
 
   # ignoreリストに追加されたユーザか自分自身の発言なら無視する
-  if status['user']['id'].in_hash?(daigorou.users("ignore")) || screen_name == daigorou.name
+  if daigorou.users("ignore").include?(status['user']['id']) || screen_name == daigorou.name
     logs "\t>>ignore"
     next
   end
@@ -148,7 +171,6 @@ daigorou.connect do |status|
   #
   # リプ爆撃対策
   #
-
   if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
     interval= daigorou.config['MentionLimit']['interval']
     count   = daigorou.config['MentionLimit']['count']
@@ -179,28 +201,23 @@ daigorou.connect do |status|
   #
   # リプライ
   #
-
   if str_update
     daigorou.post(str_update, screen_name, id, nil, try)
     # たまにふぁぼる
     daigorou.favorite(status) if rand(3) == 0
   end
 
-  #
   # RT
-  #
-
   daigorou.retweet(status) if text.index(Regexp.new(daigorou.config['RetweetKeyword']))
 
   #
   # FAV
   #
-
   if text.index("ふぁぼ")
     if text =~ /(@#{daigorou.name}|大五郎)/
       # 「ふぁぼ」を含むリプライをふぁぼ爆撃する
       Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
-        daigorou.favorite(status)
+      daigorou.favorite(status)
       end
     else
       # 「ふぁぼ」を含むつぶやきをふぁぼる
@@ -214,7 +231,6 @@ daigorou.connect do |status|
   #
   # 寝る
   #
-
   if Time.now.hour >= 2 && Time.now.hour < 6 && !daigorou.debug
     str_update = "もう寝るのだ（Ｕ‐ω‐）...zzZZZ ~♪  #sleep"
     daigorou.post(str_update, nil, nil, true)

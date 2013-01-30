@@ -1,4 +1,6 @@
 *.swp
+.DS_Store
+
 *.db
 *.log
 *.cer
@@ -7,14 +9,9 @@
 backup/
 test/
 
-.DS_Store
-
-MeCab.so
-
 response
 tweet
+deploy
 
-up
-down
-
+MeCab.so
 config.yaml

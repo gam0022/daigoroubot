@@ -12,7 +12,7 @@ class TwitterBot
     def initialize(config)
       @sandbox = Sandbox.new
       @config = config
-      @env = @config['calculate']['env']
+      @env = @config['env']
 
       eval @env
     end
