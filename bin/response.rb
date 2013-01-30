@@ -42,7 +42,7 @@ end
 #
 # 文章を元にキーワードを設定する
 #
-def get_keyword(daigorou, text, try, stack)
+def get_keyword(daigorou, text, rec, stack)
   mecab = MeCab::Tagger.new('-O wakati')
   node =  mecab.parseToNode(text.filter)
   list = []
@@ -58,10 +58,10 @@ def get_keyword(daigorou, text, try, stack)
     # キーワードを1つ以上あった
     keyword = list.sample
     stack << keyword
-    if try == 0
+    if rec == 0
       return keyword
     else
-      return get_keyword(daigorou, daigorou.talk(keyword, try-1, stack))
+      return get_keyword(daigorou, daigorou.talk(keyword), rec-1, stack)
     end
   else
     # キーワードがなければ前のキーワードを返す
@@ -110,13 +110,6 @@ def generate_replay(status, daigorou)
 
     # メンションに対して、単語に反応してリプライ
     str_update = search_table(daigorou.config['ReplayTable']['mention'], text)
-    keyword = get_keyword(daigorou, text, (3*0.5**rand(5)).to_i, [["俺","僕", nil].sample])
-    if keyword
-      logs "keyword:[#{keyword}]"
-      str_update = daigorou.talk(keyword)
-    else
-      logs "#faild: faild to set keyword"
-    end
     return str_update if str_update
 
     # 電卓機能
@@ -142,6 +135,15 @@ def generate_replay(status, daigorou)
     return str_update if str_update
 
     # マルコフ連鎖で返事を生成
+    rec = (3*0.5**rand(5)).to_i
+    logs "keyword設定の再帰回数: #{rec}"
+    keyword = get_keyword(daigorou, text, rec, [["俺","僕", nil].sample])
+    if keyword
+      logs "keyword:[#{keyword}]"
+      str_update = daigorou.talk(keyword)
+    else
+      logs "#faild: faild to set keyword"
+    end
     return str_update if str_update
 
     if keyword && !keyword.empty? && keyword != ' ' && f == 0
