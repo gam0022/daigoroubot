@@ -316,7 +316,7 @@ class TwitterBot
     end
 
     logs "生成時間:#{(Time.now - start).to_s}秒"
-    return text.gobi
+    return gobi(text)
 
   end
 

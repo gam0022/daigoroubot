@@ -40,6 +40,36 @@ def search_table(table, text)
 end
 
 #
+# 文章を元にキーワードを設定する
+#
+def get_keyword(daigorou, text, try, stack)
+  mecab = MeCab::Tagger.new('-O wakati')
+  node =  mecab.parseToNode(text.filter)
+  list = []
+  while node do
+    # 含まれる名詞・形容詞を抜き出す
+    if node.feature.to_s.toutf8 =~ /(名詞|形容詞)/ && !(node.surface.to_s.toutf8 =~ /(ー|EOS)/)
+      list << node.surface.toutf8
+    end
+    node = node.next
+  end
+
+  if list.size > 0
+    # キーワードを1つ以上あった
+    keyword = list.sample
+    stack << keyword
+    if try == 0
+      return keyword
+    else
+      return get_keyword(daigorou, daigorou.talk(keyword, try-1, stack))
+    end
+  else
+    # キーワードがなければ前のキーワードを返す
+    return stack.pop
+  end
+end
+
+#
 # 返事を生成
 #
 
@@ -80,6 +110,13 @@ def generate_replay(status, daigorou)
 
     # メンションに対して、単語に反応してリプライ
     str_update = search_table(daigorou.config['ReplayTable']['mention'], text)
+    keyword = get_keyword(daigorou, text, (3*0.5**rand(5)).to_i, [["俺","僕", nil].sample])
+    if keyword
+      logs "keyword:[#{keyword}]"
+      str_update = daigorou.talk(keyword)
+    else
+      logs "#faild: faild to set keyword"
+    end
     return str_update if str_update
 
     # 電卓機能
@@ -105,34 +142,6 @@ def generate_replay(status, daigorou)
     return str_update if str_update
 
     # マルコフ連鎖で返事を生成
-    temp = text
-    mecab = MeCab::Tagger.new('-O wakati')
-    # keyword: マルコフ連鎖の起点となる単語
-    keyword = ["俺","僕", nil].sample
-    # 75%の確率で、リプライに含まれる名詞or形容詞からキーワードを設定する。
-    # 25%の確率で、上で生成した文章からさらに同様にしてキーワードを設定する。
-    f = (rand(4) == 0) && !keyword ? 1 : 0
-    (0 .. f).each do |i|
-      node =  mecab.parseToNode(temp.filter)
-      list = Array.new
-      while node do
-        # 含まれる名詞・形容詞を抜き出す
-        if node.feature.to_s.toutf8 =~ /(名詞|形容詞)/ && !(node.surface.to_s.toutf8 =~ /(ー|EOS)/)
-          list.push node.surface.toutf8
-        end
-        node = node.next
-      end
-      if list.size != 0 || keyword
-        keyword = list.sample if list.size != 0
-        logs "keyword(#{i}): [#{keyword}]"
-        str_update = temp = daigorou.talk(keyword)
-        logs "temp: #{temp}"
-        break unless temp
-      else
-        logs "#faild: faild to set keyword"
-        break
-      end
-    end
     return str_update if str_update
 
     if keyword && !keyword.empty? && keyword != ' ' && f == 0
