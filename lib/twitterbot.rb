@@ -42,9 +42,9 @@ class TwitterBot
 
   BaseDir = Dir::getwd + '/'
 
-  def initialize(path = BaseDir + "config.yaml")
+  def initialize(debug, path = BaseDir + "config.yaml")
     @config_file = path
-    @debug = false
+    @debug = debug
     load_config
   end
 
@@ -55,16 +55,18 @@ class TwitterBot
 
 
     # config
-    @name = @config['name']
+    @name = @debug ? @config['name_debug'] : @config['name']
+
     @files = {
       :db   => BaseDir + @config['files']['db'],
       :cer  => BaseDir + @config['files']['cer']
     }
 
-    @CONSUMER_KEY       = @config['oauth']['ConsumerKey']
-    @CONSUMER_SECRET    = @config['oauth']['ConsumerSecret']
-    @OAUTH_TOEKN        = @config['oauth']['OauthToken']
-    @OAUTH_TOEKN_SECRET = @config['oauth']['OauthTokenSecret']
+    oauth = @debug ? 'oauth_debug' : 'oauth'
+    @CONSUMER_KEY       = @config[oauth]['ConsumerKey']
+    @CONSUMER_SECRET    = @config[oauth]['ConsumerSecret']
+    @OAUTH_TOEKN        = @config[oauth]['OauthToken']
+    @OAUTH_TOEKN_SECRET = @config[oauth]['OauthTokenSecret']
 
     @consumer = OAuth::Consumer.new(
       @CONSUMER_KEY,
@@ -103,32 +105,28 @@ class TwitterBot
     text = "@#{in_reply_to} #{text}" if in_reply_to
     text += " - " + Time.now.to_s if time
 
-    if @debug
-      logs "\tdebug>>#{text}"
-    else
-      (1..try).each do |i|
-        # 140文字の制限をチェック
-        text = text[0..137] + "(略" if text.length > 140
+    (1..try).each do |i|
+      # 140文字の制限をチェック
+      text = text[0..137] + "(略" if text.length > 140
 
-        begin
-          if in_reply_to_status_id
-            Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
-          else
-            Twitter.update(text)
-          end
-        rescue Timeout::Error, StandardError, Net::HTTPServerException
-          logs "#error: 投稿エラー発生! #{i}回目 [#{text}]"
-          text += '　'
-          if text.length > 140 || i>=try
-            logs "#error: 投稿できまでんでした!!"
-            break
-          end
+      begin
+        if in_reply_to_status_id
+          Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
         else
+          Twitter.update(text)
+        end
+      rescue Timeout::Error, StandardError, Net::HTTPServerException
+        logs "#error: 投稿エラー発生! #{i}回目 [#{text}]"
+        text += '　'
+        if text.length > 140 || i>=try
+          logs "#error: 投稿できまでんでした!!"
           break
         end
+      else
+        break
       end
-      logs "\t>>#{text}"
     end
+    logs "\t>>#{text}"
 
   end
 
@@ -139,9 +137,7 @@ class TwitterBot
     end
 
     id = status['id']
-    if @debug
-      logs "\tFAV(debug)>>id:#{id}"
-    elsif !status['favourited']
+    if !status['favourited']
       logs "\tFAV>>id:#{id}"
       Twitter.favorite(id) rescue logs "#error: #{$!}"
       status['favourited'] = true
@@ -155,9 +151,7 @@ class TwitterBot
     end
 
     id = status['id']
-    if @debug
-      logs "\tRT(debug)>>id:#{id}"
-    elsif !status['retweeted']
+    if !status['retweeted']
       logs "\tRT>>id:#{id}"
       Twitter.retweet(id) rescue logs "#error: #{$!}"
       status['retweeted'] = true

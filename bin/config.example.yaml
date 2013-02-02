@@ -9,10 +9,18 @@ files:
   cer: "ca.cer"
 
 oauth:
-  ConsumerKey:       
-  ConsumerSecret:    
-  OauthToken:        
-  OauthTokenSecret:  
+  ConsumerKey:       ""
+  ConsumerSecret:    ""
+  OauthToken:        ""
+  OauthTokenSecret:  ""
+
+oauth_debug:
+  ConsumerKey:       ""
+  ConsumerSecret:    ""
+  OauthToken:        ""
+  OauthTokenSecret:  ""
+
+name_debug: "daigoroubot2"
 
 ReplayTable:
   all:
@@ -47,6 +55,9 @@ ReplayTable:
     - 
       - ["バイトだん", "バイトから帰宅", "退社"]
       - ["お仕事お疲れなのだ！", "お疲れ様なのだ！", "バイト乙なのだ！", "おつかれなのだ！"]
+    - 
+      - ["節分", "恵方巻"]
+      - ["恵方巻き食べてる女の子かわいいのだ（Ｕ＾ω＾）", "鬼はそと、福はうちなのだ（Ｕ＾ω＾）"]
 #    - 
 #      - ["あけおめ", "あけましておめでとう", "ことよろ", "今年もよろしく", "ことしもよろしく"]
 #      - ["あけましておめでとうなのだ！ことしもよろしくなのだ（Ｕ＾ω＾）！"]
@@ -144,7 +155,28 @@ Function:
   Sandbox:
     level: 4
     timeout: 0.1
+
+  env: >
+    alias ln log10;
+    def e;E;end;
+    def pi;PI;end;
   
+    def factorial(n)
+      (1..n).inject(:*)
+    end
+  
+    def permutation(n,r)
+      (n>=r) ? factorial(n) / factorial(n-r) : 0
+    end
+  
+    def combination(n,r)
+      (n>=r) ? factorial(n) / (factorial(n-r) * factorial(r)) : nil
+    end
+  
+    def repeated_combination(n,r)
+      combination(n+r+1, r)
+    end
+
   command:
     all:
   
@@ -184,26 +216,6 @@ Function:
       "([0-9]+)P([0-9]+)": '"permutation(#{$1},#{$2})"'
       "([0-9]+)C([0-9]+)": '"combination(#{$1},#{$2})"'
       "([0-9]+)H([0-9]+)": '"repeated_combination(#{$1},#{$2})"'
-    env: >
-      alias ln log10;
-      def e;E;end;
-      def pi;PI;end;
-  
-      def factorial(n)
-        (1..n).inject(:*)
-      end
-  
-      def permutation(n,r)
-        (n>=r) ? factorial(n) / factorial(n-r) : 0
-      end
-  
-      def combination(n,r)
-        (n>=r) ? factorial(n) / (factorial(n-r) * factorial(r)) : nil
-      end
-  
-      def repeated_combination(n,r)
-        combination(n+r+1, r)
-      end
 
 WordsOnFaildRegularTweet: 
   - "（Ｕ＾ω＾）わんわんお！なのだ"

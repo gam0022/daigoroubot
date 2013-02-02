@@ -3,16 +3,18 @@ require_relative '../lib/twitterbot'
 
 # start message
 logs "#start: response.rb"
-daigorou = TwitterBot.new
-users = {}
 
 #
 #  オプション解析
 #
 
+debug = false
 opt = OptionParser.new
-opt.on('-d', '--debug') {|v| daigorou.debug = true }
+opt.on('-d', '--debug') {|v| debug = true }
 opt.parse!(ARGV)
+
+daigorou = TwitterBot.new(debug)
+users = {}
 
 logs "#Debug Mode" if daigorou.debug
 
@@ -84,6 +86,8 @@ def generate_replay(status, daigorou)
   isMention = status['entities']['user_mentions'].any?{|user| user['screen_name']==daigorou.name}
   #isMention = text.index("@#{daigorou.name} ")
   isMention_not_RT = isMention && !isRT
+
+  p daigorou.name
 
   # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
   if !isRT && ( status['entities']['user_mentions'].empty? || isMention )
