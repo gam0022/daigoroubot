@@ -7,16 +7,15 @@ logs "#start: response.rb"
 #
 #  オプション解析
 #
-
 debug = false
 opt = OptionParser.new
 opt.on('-d', '--debug') {|v| debug = true }
 opt.parse!(ARGV)
 
-daigorou = TwitterBot.new(debug)
-users = {}
+logs "#Debug Mode" if debug
 
-logs "#Debug Mode" if daigorou.debug
+daigorou = TwitterBot.new(debug, true)
+users = {}
 
 #
 # ここで言うテーブルは次のようなデータ構造となっている
@@ -75,22 +74,10 @@ end
 #
 # 返事を生成
 #
-def generate_replay(status, daigorou)
-
-  text = status['text']
-  text_ = text.filter
-  screen_name = status['user']['screen_name']
-  id = status['id']
-
-  isRT = status['retweeted_status']
-  isMention = status['entities']['user_mentions'].any?{|user| user['screen_name']==daigorou.name}
-  #isMention = text.index("@#{daigorou.name} ")
-  isMention_not_RT = isMention && !isRT
-
-  p daigorou.name
+def generate_replay(status, daigorou, text, text_, screen_name, id, isRT, isMention, isMention_not_RT)
 
   # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
-  if !isRT && ( status['entities']['user_mentions'].empty? || isMention )
+  if !isRT && ( status.user_mentions.empty? || isMention )
     str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} "))
     return str_update, 1 if str_update
   end
@@ -171,16 +158,15 @@ end
 #
 # TLを取得
 #
+daigorou.client.on_timeline_status do |status|
 
-daigorou.connect do |status|
-
-  text = status['text']
+  text = status.text
   text_ = text.filter
-  screen_name = status['user']['screen_name']
-  id = status['id']
+  screen_name = status.user.screen_name
+  id = status.id
 
-  isRT = status['retweeted_status']
-  isMention = status['entities']['user_mentions'].any?{|user| user['screen_name']==daigorou.name}
+  isRT = status.retweeted_status
+  isMention = status.user_mentions.any?{|user| user.screen_name==daigorou.name}
   isMention_not_RT = isMention && !isRT
 
   # textが無効だったら次へ
@@ -190,7 +176,7 @@ daigorou.connect do |status|
   logs "[@#{screen_name}] #{text}"
 
   # ignoreリストに追加されたユーザか自分自身の発言なら無視する
-  if daigorou.users("ignore").include?(status['user']['id']) || screen_name == daigorou.name
+  if daigorou.users("ignore").include?(status.user.id) || screen_name == daigorou.name
     logs "\t>>ignore"
     next
   end
@@ -222,11 +208,13 @@ daigorou.connect do |status|
   end
 
   # 返事を生成する
-  str_update,try = generate_replay(status, daigorou)
+  str_update,try = 
+    generate_replay(status, daigorou, text, text_, 
+                    screen_name, id, isRT, isMention, isMention_not_RT)
   try = 5 unless try
 
   #
-  # リプライ
+  # Reply
   #
   if str_update
     daigorou.post(str_update, screen_name, id, nil, try)
@@ -234,19 +222,18 @@ daigorou.connect do |status|
     daigorou.favorite(status) if rand(3) == 0
   end
 
-  # RT
+  # Retweet
   daigorou.retweet(status) if text.index(Regexp.new(daigorou.config['RetweetKeyword']))
 
   #
-  # FAV
+  # Favorite
   #
   if text.index(/(ふぁぼ|足あと|踏めよ)/)
-    if text =~ /(@#{daigorou.name}|大五郎)/
+    if isMention_not_RT || text =~ /大五郎/
       # 「ふぁぼ」を含むリプライをふぁぼ爆撃する
-      # 一時凍結。対策を考える。
-      #Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
-      #daigorou.favorite(status)
-      #end
+      Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
+        daigorou.favorite(status)
+      end
     else
       # 「ふぁぼ」を含むつぶやきをふぁぼる
       daigorou.favorite(status)
@@ -266,3 +253,22 @@ daigorou.connect do |status|
   end 
 
 end
+
+# Direct Message
+daigorou.client.on_direct_message do |message|
+  logs "#direct message:"
+  logs "[@#{message.sender.screen_name}] #{message.text}"
+end
+
+# Error Handling
+daigorou.client.on_error do |message|
+  time = logs("#error: #{message}")
+  Twitter.direct_message_create(daigorou.config['author'], "#{time} #{$!}")
+end
+
+# Reconnect
+daigorou.client.on_reconnect do |timeout, retries|
+  logs "#reconnect: timeout:#{timeout}, retries:#{retries}"
+end
+
+daigorou.client.userstream

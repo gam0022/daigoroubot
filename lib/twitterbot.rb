@@ -6,24 +6,26 @@ require 'MeCab'
 require 'enumerator' # each_consを利用するため必要
 require 'open-uri'
 require 'kconv'
-require 'oauth'
-require 'net/https'
-require "json/pure"
+#require 'oauth'
+#require 'net/https'
+#require 'json/pure'
 require 'yaml'
 require 'fileutils'
 require 'pp'
 require 'optparse'
 require 'twitter'
-require "thread"
+require 'tweetstream'
+require 'thread'
 
 require_relative "twitterbot/database"
 require_relative "twitterbot/function"
 require_relative "twitterbot/extensions"
 require_relative "sandbox"
 
-
-def logs(msg)
-  puts msg + " - " + Time.now.to_s
+def logs(text)
+  time = Time.now.strftime("%y.%m.%d-%H:%M:%S")
+  puts "#{time} #{text}"
+  time
 end
 
 #
@@ -36,23 +38,21 @@ class TwitterBot
     :config, :name, 
     :debug, 
     :config_file,
-    :database, :function,
-    :CONSUMER_KEY, :CONSUMER_SECRET, :OAUTH_TOEKN, :OAUTH_TOEKN_SECRET,
-    :consumer, :token
+    :client, :function, :database,
+    :CONSUMER_KEY, :CONSUMER_SECRET, :OAUTH_TOEKN, :OAUTH_TOEKN_SECRET
 
   BaseDir = Dir::getwd + '/'
 
-  def initialize(debug, path = BaseDir + "config.yaml")
-    @config_file = path
+  def initialize(debug = false, stream = false, config_file = BaseDir + "config.yaml")
+    @config_file = config_file
     @debug = debug
-    load_config
+    load_config(stream)
   end
 
-  def load_config
+  def load_config(stream)
     open(@config_file) do |io|
       @config = YAML.load(io)
     end
-
 
     # config
     @name = @debug ? @config['name_debug'] : @config['name']
@@ -68,25 +68,21 @@ class TwitterBot
     @OAUTH_TOEKN        = @config[oauth]['OauthToken']
     @OAUTH_TOEKN_SECRET = @config[oauth]['OauthTokenSecret']
 
-    @consumer = OAuth::Consumer.new(
-      @CONSUMER_KEY,
-      @CONSUMER_SECRET,
-      :site => 'http://twitter.com'
-    )
+    Twitter.configure do |config|
+      config.consumer_key       = @CONSUMER_KEY      
+      config.consumer_secret    = @CONSUMER_SECRET   
+      config.oauth_token        = @OAUTH_TOEKN
+      config.oauth_token_secret = @OAUTH_TOEKN_SECRET
+    end
 
-    @token = OAuth::AccessToken.new(
-      @consumer,
-      @OAUTH_TOEKN,
-      @OAUTH_TOEKN_SECRET
-    )
-
-    @_users = Hash.new
-
-    Twitter.configure do |configer|
-      configer.consumer_key       = @CONSUMER_KEY      
-      configer.consumer_secret    = @CONSUMER_SECRET   
-      configer.oauth_token        = @OAUTH_TOEKN
-      configer.oauth_token_secret = @OAUTH_TOEKN_SECRET
+    if stream
+      TweetStream.configure do |config|
+        config.consumer_key       = @CONSUMER_KEY      
+        config.consumer_secret    = @CONSUMER_SECRET   
+        config.oauth_token        = @OAUTH_TOEKN
+        config.oauth_token_secret = @OAUTH_TOEKN_SECRET
+        config.auth_method        = :oauth
+      end
     end
 
     # 計算機能のエイリアスの正規表現のパターンを生成
@@ -95,9 +91,10 @@ class TwitterBot
     end
 
     # 内部クラスのインスタンスを初期化
+    @client = TweetStream::Client.new if stream
     @function = Function.new(@config['Function'])
     @database = DataBase.new(@files[:db])
-
+    @_users = {}
   end
 
   def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10)
@@ -116,9 +113,9 @@ class TwitterBot
           Twitter.update(text)
         end
       rescue Timeout::Error, StandardError, Net::HTTPServerException
-        logs "#error: 投稿エラー発生! #{i}回目 [#{text}]"
+        logs "#error: 投稿エラー発生! #{i}回目 [#{text}] #{$!}"
         text += '　'
-        if text.length > 140 || i>=try
+        if i>=try
           logs "#error: 投稿できまでんでした!!"
           break
         end
@@ -131,86 +128,29 @@ class TwitterBot
   end
 
   def favorite(status)
-    if status['retweeted_status']
-      favorite(status['retweeted_status'])
+    if status.retweeted_status
+      favorite(status.retweeted_status)
       return
     end
 
-    id = status['id']
-    if !status['favourited']
+    id = status.id
+    if !status.favourited
       logs "\tFAV>>id:#{id}"
       Twitter.favorite(id) rescue logs "#error: #{$!}"
-      status['favourited'] = true
     end
   end
 
   def retweet(status)
-    if status['retweeted_status']
-      retweet(status['retweeted_status'])
+    if status.retweeted_status
+      retweet(status.retweeted_status)
       return
     end
 
-    id = status['id']
-    if !status['retweeted']
+    id = status.id
+    if !status.retweeted
       logs "\tRT>>id:#{id}"
       Twitter.retweet(id) rescue logs "#error: #{$!}"
-      status['retweeted'] = true
     end
-  end
-
-  def connect
-    i = 0
-    while i < 30 do
-      begin
-        # http://dev.twitter.com/pages/user_streams
-        uri = URI.parse('https://userstream.twitter.com/2/user.json')
-
-        # userstreamにはSSLでアクセスする
-        https = Net::HTTP.new(uri.host, uri.port)
-        https.use_ssl = true
-        https.verify_mode = OpenSSL::SSL::VERIFY_PEER
-        https.verify_depth = 5
-        # 接続先サーバのルートCA証明書をダウンロードしてきて指定
-        https.ca_file = @files[:cer]
-
-        https.start do |https|
-          req = Net::HTTP::Get.new(uri.request_uri)
-          req.oauth!(https, @consumer, @token)
-
-          https.request(req) do |res|
-            res.read_body do |chunk|
-              # chunked = falseなら例外を発生
-              raise 'Response is not chunked' unless res.chunked?
-
-              # JSONのパースに失敗したらスキップして次へ
-              status = JSON.parse(chunk) rescue next
-
-              # textパラメータを含まないものはスキップして次へ
-              next unless status['text']
-              if i > 0
-                logs "UserStreamAPIに再接続しました。"
-                i = 0
-              end
-              yield status
-            end
-          end
-        end
-
-        # http://d.hatena.ne.jp/aquarla/20101020/1287540883
-        # Timeout::Errorも明示的に捕捉する必要あるらしい。
-        # 現状だと、あらゆる例外をキャッチしてしまう。
-      rescue Timeout::Error , StandardError => e
-        i += 1
-        logs "#error: #{$!}"
-        logs "\t" + e.backtrace.join("\n")
-        sleep_time = (i > 10) ? 5*i : 10
-        logs "#{sleep_time}秒後に再接続します。(#{i}回目)"
-        Twitter.direct_message_create(config['author'], $!)
-
-        sleep(sleep_time)
-      end
-    end
-    logs "#error: Twitterに接続できないため、connectを終了します。"
   end
 
   #
