@@ -43,6 +43,7 @@ end
 # 文章を元にキーワードを設定する
 #
 def get_keyword(daigorou, text, rec, stack)
+  return stack.pop unless text
   mecab = MeCab::Tagger.new('-O wakati')
   node =  mecab.parseToNode(text.filter)
   list = []
@@ -72,7 +73,6 @@ end
 #
 # 返事を生成
 #
-
 def generate_replay(status, daigorou)
 
   text = status['text']
@@ -80,9 +80,14 @@ def generate_replay(status, daigorou)
   screen_name = status['user']['screen_name']
   id = status['id']
 
+  isRT = status['retweeted_status']
+  isMention = status['entities']['user_mentions'].any?{|user| user['screen_name']==daigorou.name}
+  #isMention = text.index("@#{daigorou.name} ")
+  isMention_not_RT = isMention && !isRT
+
   # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
-  if !(text =~ /^RT/) && ( !(text =~ /@\S+/) || (text =~ /@#{daigorou.name}/) )
-    str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@"+daigorou.name))
+  if !isRT && ( status['entities']['user_mentions'].empty? || isMention )
+    str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} "))
     return str_update, 1 if str_update
   end
 
@@ -90,8 +95,10 @@ def generate_replay(status, daigorou)
   str_update = daigorou.function.command(text_, 'all')
   return str_update if str_update
 
+  #
   # メンションが来たら
-  if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
+  #
+  if isMention_not_RT 
     # adminからのコマンド受付
     if daigorou.config['admin'].include?(screen_name)
       if text.index("kill")
@@ -146,7 +153,7 @@ def generate_replay(status, daigorou)
     end
     return str_update if str_update
 
-    if keyword && !keyword.empty? && keyword != ' ' && f == 0
+    if keyword && !keyword.empty? && keyword != ' '
       return [ "#{keyword}って、何なのだ？", "#{keyword}って何？ 美味しいの(U^ω^)？なのだ！？", "#{keyword}!?" ].sample
     else
       return daigorou.config['WordsOnFaildReply'].sample
@@ -160,12 +167,17 @@ end
 #
 # TLを取得
 #
-#
-daigorou.connect do |status|    
+
+daigorou.connect do |status|
 
   text = status['text']
+  text_ = text.filter
   screen_name = status['user']['screen_name']
   id = status['id']
+
+  isRT = status['retweeted_status']
+  isMention = status['entities']['user_mentions'].any?{|user| user['screen_name']==daigorou.name}
+  isMention_not_RT = isMention && !isRT
 
   # textが無効だったら次へ
   next if !text || text == ''
@@ -182,7 +194,7 @@ daigorou.connect do |status|
   #
   # リプ爆撃対策
   #
-  if text.index("@#{daigorou.name}") && !(text =~ /^RT/)
+  if isMention_not_RT
     interval= daigorou.config['MentionLimit']['interval']
     count   = daigorou.config['MentionLimit']['count']
     release = daigorou.config['MentionLimit']['release']
@@ -224,12 +236,13 @@ daigorou.connect do |status|
   #
   # FAV
   #
-  if text.index("ふぁぼ")
+  if text.index(/(ふぁぼ|足あと|踏めよ)/)
     if text =~ /(@#{daigorou.name}|大五郎)/
       # 「ふぁぼ」を含むリプライをふぁぼ爆撃する
-      Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
-      daigorou.favorite(status)
-      end
+      # 一時凍結。対策を考える。
+      #Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
+      #daigorou.favorite(status)
+      #end
     else
       # 「ふぁぼ」を含むつぶやきをふぁぼる
       daigorou.favorite(status)

@@ -133,23 +133,33 @@ class TwitterBot
   end
 
   def favorite(status)
+    if status['retweeted_status']
+      favorite(status['retweeted_status'])
+      return
+    end
+
     id = status['id']
     if @debug
       logs "\tFAV(debug)>>id:#{id}"
     elsif !status['favourited']
       logs "\tFAV>>id:#{id}"
-      Twitter.favorite(id)
+      Twitter.favorite(id) rescue logs "#error: #{$!}"
       status['favourited'] = true
     end
   end
 
   def retweet(status)
+    if status['retweeted_status']
+      retweet(status['retweeted_status'])
+      return
+    end
+
     id = status['id']
     if @debug
       logs "\tRT(debug)>>id:#{id}"
     elsif !status['retweeted']
       logs "\tRT>>id:#{id}"
-      Twitter.retweet(id)
+      Twitter.retweet(id) rescue logs "#error: #{$!}"
       status['retweeted'] = true
     end
   end
@@ -201,6 +211,8 @@ class TwitterBot
         logs "\t" + e.backtrace.join("\n")
         sleep_time = (i > 10) ? 5*i : 10
         logs "#{sleep_time}秒後に再接続します。(#{i}回目)"
+        Twitter.direct_message_create(config['author'], $!)
+
         sleep(sleep_time)
       end
     end
