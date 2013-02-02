@@ -10,12 +10,14 @@ flag = Flag.new(false, false, false)
 
 # キーワード(マルコフ連鎖の起点)
 keyword = nil
+
 str_update = nil
+debug = false
 
 #
 # オプション解析
 #
-
+opt = OptionParser.new
 opt.on('-r', '--regular') {|v| flag.regular = true}
 opt.on('-t', '--time') {|v| flag.time = true}
 opt.on('-w', '--weather') {|v| flag.weather = true}
