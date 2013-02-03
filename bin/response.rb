@@ -15,7 +15,6 @@ opt.parse!(ARGV)
 logs "#Debug Mode" if debug
 
 daigorou = TwitterBot.new(debug, true)
-users = {}
 
 #
 # ここで言うテーブルは次のようなデータ構造となっている
@@ -100,7 +99,7 @@ def generate_replay(status, daigorou, text, text_, screen_name, id, isRT, isMent
       if text.index("reload")
         str_update = "はい！設定再読み込みしますのだ！ #daigoroubot_reload_config"
         daigorou.post(str_update, screen_name, id, true)
-        daigorou.load_config
+        daigorou.load_config(true)
         #next
         return nil
       end
@@ -163,6 +162,7 @@ daigorou.client.on_timeline_status do |status|
   text = status.text
   text_ = text.filter
   screen_name = status.user.screen_name
+  user_id = status.user.id
   id = status.id
 
   isRT = status.retweeted_status
@@ -176,7 +176,7 @@ daigorou.client.on_timeline_status do |status|
   logs "[@#{screen_name}] #{text}"
 
   # ignoreリストに追加されたユーザか自分自身の発言なら無視する
-  if daigorou.users("ignore").include?(status.user.id) || screen_name == daigorou.name
+  if daigorou.config['Users']['ignore'].include?(status.user.id) || screen_name == daigorou.name
     logs "\t>>ignore"
     next
   end
@@ -190,18 +190,20 @@ daigorou.client.on_timeline_status do |status|
     release = daigorou.config['MentionLimit']['release']
 
     # interval秒間隔でcount回数リプライがある場合、release秒間返信しない
-    if !users[screen_name] || 
-      (users[screen_name]['mentioned']['last'] + interval < Time.now && users[screen_name]['mentioned']['count'] < count) ||
-      users[screen_name]['mentioned']['last'] + release < Time.now 
-
-      users[screen_name] = {} unless users[screen_name]
-      users[screen_name]['mentioned'] = {'count' => 0}
+    s = daigorou.users.status(user_id)
+    if (s[:last] + interval < Time.now && s[:count] < count) || s[:last] + release < Time.now
+      s[:count] = 0
     end
 
-    users[screen_name]['mentioned']['count'] += 1
-    users[screen_name]['mentioned']['last'] = Time.now
-    logs "count:#{users[screen_name]['mentioned']['count']}"
-    if users[screen_name]['mentioned']['count'] >= count
+    s[:count] += 1
+    s[:sum] += 1
+    s[:last] = Time.now
+
+    logs "count: #{s[:count]}"
+
+    daigorou.users.save
+
+    if s[:count] >= count
       logs "\t>>ignore(規制)"
       next
     end

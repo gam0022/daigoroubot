@@ -20,6 +20,7 @@ require 'thread'
 require_relative "twitterbot/database"
 require_relative "twitterbot/function"
 require_relative "twitterbot/extensions"
+require_relative "twitterbot/users"
 require_relative "sandbox"
 
 def logs(text)
@@ -38,7 +39,7 @@ class TwitterBot
     :config, :name, 
     :debug, 
     :config_file,
-    :client, :function, :database,
+    :users, :client, :function, :database,
     :CONSUMER_KEY, :CONSUMER_SECRET, :OAUTH_TOEKN, :OAUTH_TOEKN_SECRET
 
   BaseDir = Dir::getwd + '/'
@@ -50,16 +51,17 @@ class TwitterBot
   end
 
   def load_config(stream)
+
     open(@config_file) do |io|
       @config = YAML.load(io)
     end
 
-    # config
     @name = @debug ? @config['name_debug'] : @config['name']
 
     @files = {
-      :db   => BaseDir + @config['files']['db'],
-      :cer  => BaseDir + @config['files']['cer']
+      :db    => BaseDir + @config['files']['db'],
+      :cer   => BaseDir + @config['files']['cer'],
+      :users => BaseDir + @config['files']['users']
     }
 
     oauth = @debug ? 'oauth_debug' : 'oauth'
@@ -85,16 +87,12 @@ class TwitterBot
       end
     end
 
-    # 計算機能のエイリアスの正規表現のパターンを生成
-    unless @config['Function']['calculate']['alias_pattern']
-      @config['Function']['calculate']['alias_pattern'] = @config['Function']['calculate']['alias'].keys.join('|')
-    end
-
     # 内部クラスのインスタンスを初期化
     @client = TweetStream::Client.new if stream
     @function = Function.new(@config['Function'])
     @database = DataBase.new(@files[:db])
-    @_users = {}
+    @users = Users.new(@files[:users])
+
   end
 
   def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10)
@@ -133,10 +131,9 @@ class TwitterBot
       return
     end
 
-    id = status.id
     if !status.favourited
-      logs "\tFAV>>id:#{id}"
-      Twitter.favorite(id) rescue logs "#error: #{$!}"
+      logs "\tFAV>>id:#{status.id}"
+      Twitter.favorite(status.id) rescue logs "#error: #{$!}"
     end
   end
 
@@ -146,44 +143,11 @@ class TwitterBot
       return
     end
 
-    id = status.id
     if !status.retweeted
-      logs "\tRT>>id:#{id}"
-      Twitter.retweet(id) rescue logs "#error: #{$!}"
+      logs "\tRT>>id:#{status.id}"
+      Twitter.retweet(status.id) rescue logs "#error: #{$!}"
     end
   end
-
-  #
-  # Users[key] の要素を、name から id に変換して返す
-  #
-  def users(key)
-    return @_users[key] if @_users[key]
-    @_users[key] = users_core(key)
-  end
-
-  def users_core(key)
-    result = Array.new
-    temp = @config['Users'][key]
-    return result unless temp
-    temp.each do |val|
-      case val.class.to_s
-      when "Fixnum"
-        result.push val
-      when "String"
-        begin
-          result.push Twitter.user(val).id
-        rescue
-          logs "#error: Not found such a user[#{val}]"
-        end
-      when "NilClass"
-        #
-      else
-        raise "to_id"
-      end
-    end
-    return result
-  end
-
 
   #
   # 文章からマルコフ連鎖のデータを学習する

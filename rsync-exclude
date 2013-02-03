@@ -1,3 +1,4 @@
+.DS_Store
 *.swp
 *.db
 *.log
@@ -8,6 +9,5 @@ backup/
 test/
 logs/
 
-.DS_Store
-
 MeCab.so
+users.yaml
