@@ -12,6 +12,7 @@ test/
 response
 tweet
 deploy
+follow
 
 MeCab.so
 config.yaml
