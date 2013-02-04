@@ -78,7 +78,7 @@ def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isR
   # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
   if daigorou.users.config(user_id)[:greeting] && !isRT && ( status.user_mentions.empty? || isMention )
     str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} "))
-    return str_update, 1 if str_update
+    return str_update, isMention ? 3 : 1 if str_update
   end
 
   # 複雑な機能
