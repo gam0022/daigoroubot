@@ -243,7 +243,7 @@ daigorou.client.on_timeline_status do |status|
   end
 
   # 学習させる
-  daigorou.learn(text.filter) if !daigorou.debug && daigorou.user.config(user_id)[:learn]
+  daigorou.learn(text.filter) if !daigorou.debug && daigorou.users.config(user_id)[:learn]
 
   #
   # 寝る
