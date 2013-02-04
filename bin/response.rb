@@ -73,10 +73,10 @@ end
 #
 # 返事を生成
 #
-def generate_replay(status, daigorou, text, text_, screen_name, id, isRT, isMention, isMention_not_RT)
+def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isRT, isMention, isMention_not_RT)
 
   # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
-  if !isRT && ( status.user_mentions.empty? || isMention )
+  if daigorou.users.config(user_id)[:greeting] && !isRT && ( status.user_mentions.empty? || isMention )
     str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} "))
     return str_update, 1 if str_update
   end
@@ -212,8 +212,8 @@ daigorou.client.on_timeline_status do |status|
   # 返事を生成する
   str_update,try = 
     generate_replay(status, daigorou, text, text_, 
-                    screen_name, id, isRT, isMention, isMention_not_RT)
-  try = 5 unless try
+                    screen_name, user_id, id, isRT, isMention, isMention_not_RT)
+  try = 3 unless try
 
   #
   # Reply
@@ -234,7 +234,7 @@ daigorou.client.on_timeline_status do |status|
     if isMention_not_RT || text =~ /大五郎/
       # 「ふぁぼ」を含むリプライをふぁぼ爆撃する
       Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
-        daigorou.favorite(status)
+      daigorou.favorite(status)
       end
     else
       # 「ふぁぼ」を含むつぶやきをふぁぼる
@@ -243,7 +243,7 @@ daigorou.client.on_timeline_status do |status|
   end
 
   # 学習させる
-  daigorou.learn(text.filter) if !daigorou.debug
+  daigorou.learn(text.filter) if !daigorou.debug && daigorou.user.config(user_id)[:learn]
 
   #
   # 寝る
@@ -259,7 +259,48 @@ end
 # Direct Message
 daigorou.client.on_direct_message do |message|
   logs "#direct message:"
-  logs "[@#{message.sender.screen_name}] #{message.text}"
+
+  text = message.text.filter
+  sender_name = message.sender.screen_name
+  sender_id = message.sender.id
+
+  logs "[@#{sender_name}] #{message.text}"
+
+  if sender_name == daigorou.name
+    logs "\t>>ignore"
+    next
+  end
+
+  reply_text = '日本語でおｋ（Ｕ＾ω＾）？'
+
+  if text =~ /^(挨拶|あいさつ)(して.*|しろ.*|開始|許可)?$/
+    daigorou.users.config(sender_id)[:greeting] = true
+    reply_text = '設定完了。挨拶をするのだ（Ｕ＾ω＾）！'
+  end
+
+  if text =~ /(挨拶|あいさつ)(す[るん]な|しないで.*|停止|禁止)/
+    daigorou.users.config(sender_id)[:greeting] = false
+    reply_text = '設定完了。挨拶はしないのだ（Ｕ＾ω＾;）！'
+  end
+
+  if text =~ /^(学習|パクツイ)(して.*|しろ.*|開始|許可)?$/
+    daigorou.users.config(sender_id)[:learn] = true
+    reply_text = '設定完了。学習するのだ（Ｕ＾ω＾）！'
+  end
+
+  if text =~ /(パクツイ|学習)(す[るん]な|しないで.*|停止|禁止)/
+    daigorou.users.config(sender_id)[:learn] = false
+    reply_text = '設定完了。学習はしないのだ（Ｕ＾ω＾;）！'
+  end
+
+  # 連投防止のためのハッシュを付加
+  reply_text = "#{reply_text} ##{Time.now.hash.to_s(36)}"
+
+  logs "\tDM>>#{sender_name} #{reply_text}"
+  Twitter.direct_message_create(sender_name, reply_text)
+
+  daigorou.users.save
+
 end
 
 # Error Handling

@@ -95,7 +95,7 @@ class TwitterBot
 
   end
 
-  def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=10)
+  def post(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=1)
 
     text = "@#{in_reply_to} #{text}" if in_reply_to
     text += " - " + Time.now.to_s if time

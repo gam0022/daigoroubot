@@ -34,7 +34,7 @@ class TwitterBot
       if @info[:config][id]
         @info[:config][id]
       else
-        @info[:config][id] = {:greeting => false}
+        @info[:config][id] = {:greeting => true, :learn => true}
       end
     end
 
