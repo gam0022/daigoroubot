@@ -105,6 +105,10 @@ def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isR
       end
     end
 
+    # 挨拶機能が停止されていた場合、all Table にも反応する。
+    str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} ")) unless daigorou.users.config(user_id)[:greeting]
+    return str_update if str_update
+
     # メンションに対して、単語に反応してリプライ
     str_update = search_table(daigorou.config['ReplayTable']['mention'], text)
     return str_update if str_update
