@@ -91,11 +91,11 @@ class TwitterBot
     if response
       @client = TweetStream::Client.new
       @users = Users.new(@files[:users])
-      @function = Function.new(@config['Function'])
     end
     if db
       @database = DataBase.new(@files[:db])
     end
+    @function = Function.new(@config['Function'])
 
   end
 
