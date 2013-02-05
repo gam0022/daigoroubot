@@ -44,13 +44,13 @@ class TwitterBot
 
   BaseDir = Dir::getwd + '/'
 
-  def initialize(debug = false, stream = false, config_file = BaseDir + "config.yaml")
+  def initialize(debug = false, response = false, db = true, config_file = BaseDir + "config.yaml")
     @config_file = config_file
     @debug = debug
-    load_config(stream)
+    load_config(response, db)
   end
 
-  def load_config(stream)
+  def load_config(response, db)
 
     open(@config_file) do |io|
       @config = YAML.load(io)
@@ -77,7 +77,7 @@ class TwitterBot
       config.oauth_token_secret = @OAUTH_TOEKN_SECRET
     end
 
-    if stream
+    if response
       TweetStream.configure do |config|
         config.consumer_key       = @CONSUMER_KEY      
         config.consumer_secret    = @CONSUMER_SECRET   
@@ -88,10 +88,14 @@ class TwitterBot
     end
 
     # 内部クラスのインスタンスを初期化
-    @client = TweetStream::Client.new if stream
-    @function = Function.new(@config['Function'])
-    @database = DataBase.new(@files[:db])
-    @users = Users.new(@files[:users])
+    if response
+      @client = TweetStream::Client.new
+      @users = Users.new(@files[:users])
+      @function = Function.new(@config['Function'])
+    end
+    if db
+      @database = DataBase.new(@files[:db])
+    end
 
   end
 

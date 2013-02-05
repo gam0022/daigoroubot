@@ -3,7 +3,7 @@ require_relative '../lib/twitterbot'
 
 # start message
 logs "#start: follow.rb"
-daigorou = TwitterBot.new
+daigorou = TwitterBot.new(false, false, false)
 
 new_follow = ( daigorou.config['Users']['follow'] | Twitter.follower_ids.ids ) - Twitter.friend_ids.ids - Twitter.friendships_outgoing.ids - daigorou.config['Users']['remove']
 
