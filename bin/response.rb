@@ -99,7 +99,7 @@ def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isR
       if text.index("reload")
         str_update = "はい！設定再読み込みしますのだ！ #daigoroubot_reload_config"
         daigorou.post(str_update, screen_name, id, true)
-        daigorou.load_config(true)
+        daigorou.load_config(true, true)
         #next
         return nil
       end
