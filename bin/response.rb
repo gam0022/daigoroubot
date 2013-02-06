@@ -280,19 +280,16 @@ daigorou.client.on_direct_message do |message|
   if text =~ /^(挨拶|あいさつ)(して.*|しろ.*|開始|許可)?$/
     daigorou.users.config(sender_id)[:greeting] = true
     reply_text = '設定完了。挨拶をするのだ（Ｕ＾ω＾）！'
-  end
 
-  if text =~ /(挨拶|あいさつ)(す[るん]な|しないで.*|停止|禁止)/
+  elsif text =~ /(挨拶|あいさつ)(す[るん]な|しないで.*|停止|禁止)/
     daigorou.users.config(sender_id)[:greeting] = false
     reply_text = '設定完了。挨拶はしないのだ（Ｕ＾ω＾;）！'
-  end
 
-  if text =~ /^(学習|パクツイ)(して.*|しろ.*|開始|許可)?$/
+  elsif text =~ /^(学習|パクツイ)(して.*|しろ.*|開始|許可)?$/
     daigorou.users.config(sender_id)[:learn] = true
     reply_text = '設定完了。学習するのだ（Ｕ＾ω＾）！'
-  end
 
-  if text =~ /(パクツイ|学習)(す[るん]な|しないで.*|停止|禁止)/
+  elsif text =~ /(パクツイ|学習)(す[るん]な|しないで.*|停止|禁止)/
     daigorou.users.config(sender_id)[:learn] = false
     reply_text = '設定完了。学習はしないのだ（Ｕ＾ω＾;）！'
   end
