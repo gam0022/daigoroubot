@@ -75,10 +75,17 @@ end
 #
 def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isRT, isMention, isMention_not_RT)
 
-  # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
-  if daigorou.users.config(user_id)[:greeting] && !isRT && ( status.user_mentions.empty? || isMention )
-    str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} "))
-    return str_update, isMention ? 3 : 1 if str_update
+  if daigorou.users.config(user_id)[:greeting] && !isRT
+    # TL上のメンションではない発言に対して、単語に反応して自発的にリプライ
+    if status.user_mentions.empty?
+      str_update = search_table(daigorou.config['ReplayTable']['self'], text)
+      return str_update if str_update
+    end
+    # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
+    if status.user_mentions.empty? || isMention
+      str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} "))
+      return str_update, isMention ? 3 : 1 if str_update
+    end
   end
 
   # 複雑な機能
@@ -106,8 +113,10 @@ def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isR
     end
 
     # 挨拶機能が停止されていた場合、all Table にも反応する。
-    str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} ")) unless daigorou.users.config(user_id)[:greeting]
-    return str_update if str_update
+    unless daigorou.users.config(user_id)[:greeting]
+      str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} ")) 
+      return str_update if str_update
+    end
 
     # メンションに対して、単語に反応してリプライ
     str_update = search_table(daigorou.config['ReplayTable']['mention'], text)
