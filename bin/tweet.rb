@@ -26,8 +26,7 @@ opt.on('-k VAL', '--keyword VAL') {|v|
   keyword = v
   flag.regular = true
 }
-opt.parse!(ARGV)
-str_update = ARGV[0]
+str_update = opt.parse(ARGV)[0]
 
 logs "#Debug Mode" if debug
 daigorou = TwitterBot.new(debug)

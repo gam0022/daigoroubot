@@ -10,7 +10,7 @@ logs "#start: response.rb"
 debug = false
 opt = OptionParser.new
 opt.on('-d', '--debug') {|v| debug = true }
-opt.parse!(ARGV)
+opt.parse(ARGV)
 
 logs "#Debug Mode" if debug
 
@@ -98,17 +98,24 @@ def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isR
   if isMention_not_RT 
     # adminからのコマンド受付
     if daigorou.config['admin'].include?(screen_name)
-      if text.index("kill")
+      if text.include?('kill')
         str_update = "はい。死にますのだ（ＵTωT) #daigoroubot_death"
         daigorou.post(str_update, screen_name, id, true)
-        exit
-      end
-      if text.index("reload")
+        exit!(true)
+
+      elsif text.include?('reload')
         str_update = "はい！設定再読み込みしますのだ！ #daigoroubot_reload_config"
         daigorou.post(str_update, screen_name, id, true)
         daigorou.load_config(true, true)
         #next
         return nil
+
+      elsif text.include?('reboot')
+        str_update = "はい！再起動しますのだ（Ｕ＾ω＾）！ #daigoroubot_reboot"
+        daigorou.post(str_update, screen_name, id, true)
+        command = "./response #{ARGV.join(' ')} &"
+        spawn(command)
+        exit!(true)
       end
     end
 
