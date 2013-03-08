@@ -6,8 +6,6 @@ class TwitterBot
     # requirements
     include Math
     require 'unicode_math'
-    require "rexml/document"
-    include REXML
 
     def initialize(config)
       @sandbox = Sandbox.new
@@ -93,25 +91,33 @@ class TwitterBot
 
       # 英語=>日本語の変換
       hash = {"today" => "今日", "tomorrow" => "明日", "dayaftertomorrow" => "明後日"}
+      jday = hash[day]
+
+      text = ""
 
       begin
-        f = open("http://weather.livedoor.com/forecast/webservice/rest/v1?city=55&day=#{day}")
-        doc = Document.new(f.read)
-        f.close
+        uri = "http://weather.livedoor.com/forecast/webservice/json/v1?city=080020"
+        open(uri) do |io|
+          json = YAML.load(io)
 
-        return nil unless (telop = doc.elements['/lwws/telop'].get_text)
-        tmax = doc.elements['/lwws/temperature/max/celsius'].get_text
-        tmin = doc.elements['/lwws/temperature/min/celsius'].get_text
+          forecast = json['forecasts'].select{|e| e['dateLabel'] == jday}.first
+          telop = forecast['telop']
+          tmax = forecast['temperature']['max']['celsius'] rescue nil
+          tmin = forecast['temperature']['min']['celsius'] rescue nil
 
-        text = "#{hash[day]}のつくばの天気は、#{telop}なのだ。"
-        text += "最高気温#{tmax}℃" if tmax
-        text += "、" if tmax && tmin
-        text += "最低気温#{tmin}℃" if tmin
-        text += "なのだ。" if tmax || tmin
-        text += "http://goo.gl/IPAuV"
+          text = "#{jday}のつくばの天気は、#{telop}なのだ。"
+          text += "最高気温#{tmax}℃" if tmax
+          text += "、" if tmax && tmin
+          text += "最低気温#{tmin}℃" if tmin
+          text += "なのだ。" if tmax || tmin
+          #text += "http://goo.gl/IPAuV"
+          text += "http://goo.gl/9n3pD"
+        end
+
       rescue
         return nil
       end
+
       return text
     end
 

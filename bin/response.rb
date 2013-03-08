@@ -291,7 +291,7 @@ daigorou.client.on_direct_message do |message|
     next
   end
 
-  reply_text = '日本語でおｋ（Ｕ＾ω＾）？'
+  reply_text = 'usage(使い方): http://gam0022.net/works/daigoroubot.html#%E8%A8%AD%E5%AE%9A'
 
   if text =~ /^(挨拶|あいさつ)(して.*|しろ.*|開始|許可)?$/
     daigorou.users.config(sender_id)[:greeting] = true
