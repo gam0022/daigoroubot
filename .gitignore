@@ -1,7 +1,7 @@
 *.swp
 .DS_Store
 
-*.db
+general.db
 *.log
 *.cer
 *.backup

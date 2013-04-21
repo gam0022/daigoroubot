@@ -147,6 +147,10 @@ def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isR
       return str_update if str_update
     end
 
+    # 教室検索
+    str_update = daigorou.function.search_classroom(text_)
+    return str_update if str_update
+
     # 複雑な機能
     str_update = daigorou.function.command(text_, 'mention')
     return str_update if str_update

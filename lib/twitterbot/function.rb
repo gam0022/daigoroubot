@@ -121,5 +121,32 @@ class TwitterBot
       return text
     end
 
+    #
+    # 教室検索
+    #
+    def search_classroom(name)
+      text = ""
+      logs kamoku_db_filename  = BaseDir + "kamoku.db"
+      kamoku_db_tablename = "kamoku2013"
+
+      db = SQLite3::Database.new(kamoku_db_filename)
+      db.busy_timeout(10000)
+
+      #begin
+        logs name.gsub!("'", "''")
+        logs sql = "select * from #{kamoku_db_tablename} where 科目名 like '%#{name}%'"
+        db.execute(sql) do |row|
+          text += "#{row[0]} #{row[1]} #{row[4]} #{row[5]} #{row[6]}\n"
+        end
+
+        db.close
+      #rescue => e
+      #  logs e.backtrace.join("\n")
+      #  db.close
+      #end
+
+      return text.empty? ? nil : text
+    end
+
   end
 end
