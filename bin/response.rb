@@ -113,7 +113,7 @@ def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isR
       elsif text.include?('reboot')
         str_update = "はい！再起動しますのだ（Ｕ＾ω＾）！ #daigoroubot_reboot"
         daigorou.post(str_update, screen_name, id, true)
-        command = "./response #{ARGV.join(' ')} &"
+        command = "./response.sh #{ARGV.join(' ')} &"
         spawn(command)
         exit!(true)
       end
