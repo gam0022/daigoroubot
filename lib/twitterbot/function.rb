@@ -128,6 +128,8 @@ class TwitterBot
       text = ""
       logs kamoku_db_filename  = BaseDir + "kamoku.db"
       kamoku_db_tablename = "kamoku2013"
+      term_now = "春"
+      mod_now = "A"
 
       db = SQLite3::Database.new(kamoku_db_filename)
       db.busy_timeout(10000)
@@ -136,7 +138,10 @@ class TwitterBot
         name.gsub!("'", "''")
         sql = "select * from #{kamoku_db_tablename} where 科目名 like '#{name}%'"
         db.execute(sql) do |row|
-          text += "#{row[0]} #{row[1]} #{row[4]} #{row[5]} #{row[6]}\n"
+          term = row[4]
+          if (term.include?(term_now) && term.include?(mod_now)) || term.include?("集中")
+            text += "#{row[0]} #{row[1]} #{term} #{row[5]} #{row[6]}\n"
+          end
         end
 
         db.close
