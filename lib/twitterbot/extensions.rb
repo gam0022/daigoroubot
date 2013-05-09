@@ -31,4 +31,20 @@ class String
     self.gsub(/'/, "''")
   end
 
+  #
+  # 改行で区切れるように、指定した文字数の文字を得る。
+  #
+  def take_lines_at_length(n)
+    tmp = ""
+    pre = ""
+    self.lines do |line|
+      pre = tmp
+      tmp += line
+      if tmp.length > n
+        return [pre, self[(pre.length - 1)..1400]]
+      end
+    end
+    return [self, ""]
+  end
+
 end

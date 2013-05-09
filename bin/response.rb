@@ -243,7 +243,7 @@ daigorou.client.on_timeline_status do |status|
   # Reply
   #
   if str_update
-    daigorou.post(str_update, screen_name, id, nil, try)
+    daigorou.post2(str_update, screen_name, id, nil, try)
     # たまにふぁぼる
     daigorou.favorite(status) if rand(3) == 0
   end
