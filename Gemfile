@@ -1,0 +1,7 @@
+source "http://rubygems.org"
+gem "oauth"
+gem "json"
+gem "sqlite3"
+gem "twitter"
+gem "tweetstream"
+gem "unicode_math"

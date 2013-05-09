@@ -18,3 +18,5 @@ follow
 MeCab.so
 config.yaml
 users.yaml
+
+Gemfile.lock
