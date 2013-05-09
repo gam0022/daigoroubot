@@ -139,7 +139,7 @@ class TwitterBot
         sql = "select * from #{kamoku_db_tablename} where 科目名 like '#{name}%'"
         db.execute(sql) do |row|
           term = row[4]
-          if (term.include?(term_now) && term.include?(mod_now)) || term.include?("集中")
+          if (term =~ /#{term_now}([ABC]+)/ && $1 != nil && $1.include?(mod_now)) || term.include?("集中") || term.include?("通年")
             text += "#{row[0]} #{row[1]} #{term} #{row[5]} #{row[6]}\n"
           end
         end
