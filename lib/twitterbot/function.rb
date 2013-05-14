@@ -140,7 +140,7 @@ class TwitterBot
         db.execute(sql) do |row|
           term = row[4]
           if (term =~ /#{term_now}([ABC]+)/ && $1 != nil && $1.include?(mod_now)) || term.include?("集中") || term.include?("通年")
-            text += "#{row[0]} #{row[1]} #{term} #{row[5]} #{row[6]}\n"
+            text += "#{row[0]} #{row[1]} #{term} #{row[5].gsub("\n", "/")} #{row[6]}\n"
           end
         end
 

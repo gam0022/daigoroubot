@@ -41,7 +41,7 @@ class String
       pre = tmp
       tmp += line
       if tmp.length > n
-        return [pre, self[(pre.length - 1)..1400]]
+        return [pre, self[pre.length..1400]]
       end
     end
     return [self, ""]
