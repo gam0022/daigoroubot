@@ -130,15 +130,14 @@ class TwitterBot
   end
 
   # 140文字を超えるポストをする。
-  def post2(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=1)
+  def post2(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=1, count = 5)
+
+    return if count == 0
 
     text = "@#{in_reply_to} #{text}" if in_reply_to
     text += " - " + Time.now.to_s if time
 
     (1..try).each do |i|
-      # 140*10文字の制限をチェック
-      text = text[0..(140*10-3)] + "(略" if text.length > 140*10
-
       begin
         if text.length <= 140
           if in_reply_to_status_id
@@ -146,14 +145,23 @@ class TwitterBot
           else
             Twitter.update(text)
           end
+          logs "\t>>#{text}"
         else
           t1, t2 = text.take_lines_at_length(140)
+          if count == 1 && !t2.empty?
+            if t1.length <= 136
+              t1 += "(略"
+            else
+              t1 = t1[0..137] + "(略" 
+            end
+          end
           if in_reply_to_status_id
             Twitter.update(t1, {:in_reply_to_status_id => in_reply_to_status_id})
           else
             Twitter.update(t1)
           end
-          post2(t2, in_reply_to, in_reply_to_status_id, time, try)
+          logs "\t>>#{t1}"
+          post2(t2, in_reply_to, in_reply_to_status_id, time, try, count - 1)
         end
       rescue Timeout::Error, StandardError, Net::HTTPServerException
         logs "#error: 投稿エラー発生! #{i}回目 [#{text}] #{$!}"
@@ -166,8 +174,6 @@ class TwitterBot
         break
       end
     end
-    logs "\t>>#{text}"
-
   end
 
 
