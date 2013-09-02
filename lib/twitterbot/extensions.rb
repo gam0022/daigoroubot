@@ -5,7 +5,7 @@
 #
 
 #
-# String拡張
+# String
 #
 class String
 
@@ -47,4 +47,13 @@ class String
     return [self, ""]
   end
 
+end
+
+#
+# Time
+#
+class Time
+  def eql_day?(other)
+    self.day == other.day && self.month == other.month && self.year == other.year 
+  end
 end

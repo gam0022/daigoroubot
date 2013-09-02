@@ -39,7 +39,7 @@ class TwitterBot
     :config, :name, 
     :debug, 
     :config_file,
-    :users, :client, :function, :database,
+    :users, :coop, :client, :function, :database,
     :CONSUMER_KEY, :CONSUMER_SECRET, :OAUTH_TOEKN, :OAUTH_TOEKN_SECRET
 
   BaseDir = Dir::getwd + '/'
@@ -61,7 +61,8 @@ class TwitterBot
     @files = {
       :db    => BaseDir + @config['files']['db'],
       :cer   => BaseDir + @config['files']['cer'],
-      :users => BaseDir + @config['files']['users']
+      :users => BaseDir + @config['files']['users'],
+      :coop  => BaseDir + @config['files']['coop']
     }
 
     oauth = @debug ? 'oauth_debug' : 'oauth'
@@ -96,6 +97,7 @@ class TwitterBot
       @database = DataBase.new(@files[:db])
     end
     @function = Function.new(@config['Function'])
+    @coop = Users.new(@files[:coop])
 
   end
 

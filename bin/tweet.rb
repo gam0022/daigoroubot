@@ -13,6 +13,7 @@ keyword = nil
 
 str_update = nil
 debug = false
+coop_screen_name = nil
 
 #
 # オプション解析
@@ -21,7 +22,8 @@ opt = OptionParser.new
 opt.on('-r', '--regular') {|v| flag.regular = true}
 opt.on('-t', '--time') {|v| flag.time = true}
 opt.on('-w', '--weather') {|v| flag.weather = true}
-opt.on('-d', '--debug') {|v| debug = true }
+opt.on('-d', '--debug') {|v| debug = true}
+opt.on('-c VAL', '--coop VAL') {|v| coop_screen_name = v}
 opt.on('-k VAL', '--keyword VAL') {|v| 
   keyword = v
   flag.regular = true
@@ -70,7 +72,30 @@ if flag.regular
     str_update = daigorou.config['WordsOnFaildRegularTweet'].sample
   end
 
+
+elsif coop_screen_name
+  #
+  # 連携用のつぶやき
+  #
+  if daigorou.config['Coop'].include?(coop_screen_name)
+    status = daigorou.coop.status(coop_screen_name)
+    last = status[:last]
+    now  = Time.now
+    if !now.eql_day?(last)
+      if rand(5) == 0
+        send = daigorou.config['Coop'][coop_screen_name]['send'].sample
+        str_update = "@#{coop_screen_name} #{send}"
+        status[:last] = Time.now
+        daigorou.coop.save
+      else
+        logs "#log lose coop with @#{coop_screen_name}"
+      end
+    else
+      logs "#log already coop with @#{coop_screen_name} today"
+    end
+  end
 end
+
 
 #
 # 天気

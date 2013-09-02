@@ -233,10 +233,26 @@ daigorou.client.on_timeline_status do |status|
     end
   end
 
+  # 他のBotとの連携
+  if daigorou.config['Coop'].include?(screen_name)
+    s = daigorou.coop.status(screen_name)
+    if s[:last].eql_day?(Time.now)
+      logs "\t>>ignore(連携制限)"
+      next
+    else
+      str_update = daigorou.config['Coop'][screen_name]['receive'].sample
+      s[:last] = Time.now
+      daigorou.coop.save
+    end
+  end
+
   # 返事を生成する
-  str_update,try = 
-    generate_replay(status, daigorou, text, text_, 
-                    screen_name, user_id, id, isRT, isMention, isMention_not_RT)
+  unless str_update
+    str_update,try =
+      generate_replay(status, daigorou, text, text_,
+                      screen_name, user_id, id, isRT, isMention, isMention_not_RT)
+  end
+
   try = 3 unless try
 
   #
