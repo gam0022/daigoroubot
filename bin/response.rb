@@ -234,7 +234,7 @@ daigorou.client.on_timeline_status do |status|
   end
 
   # 他のBotとの連携
-  if daigorou.config['Coop'].include?(screen_name)
+  if isMention_not_RT && daigorou.config['Coop'].include?(screen_name)
     s = daigorou.coop.status(screen_name)
     if s[:last].eql_day?(Time.now)
       logs "\t>>ignore(連携制限)"
