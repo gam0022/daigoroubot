@@ -156,6 +156,7 @@ ReplayTable:
 
 Coop:
   eritanbot:
+    rate: 20
     send:
       - "えりたん！散歩に行かないイカ？なのだ！"
       - "いい天気だから、一緒に散歩に行きたいのだ！"

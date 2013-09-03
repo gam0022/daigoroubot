@@ -81,9 +81,10 @@ elsif coop_screen_name
     status = daigorou.coop.status(coop_screen_name)
     last = status[:last]
     now  = Time.now
+    config = daigorou.config['Coop'][coop_screen_name]
     if !now.eql_day?(last)
-      if rand(5) == 0
-        send = daigorou.config['Coop'][coop_screen_name]['send'].sample
+      if rand(config['rate']) == 0
+        send = config['send'].sample
         str_update = "@#{coop_screen_name} #{send}"
         status[:last] = Time.now
         daigorou.coop.save
