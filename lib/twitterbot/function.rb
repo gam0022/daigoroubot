@@ -128,8 +128,8 @@ class TwitterBot
       text = ""
       logs kamoku_db_filename  = BaseDir + "kamoku.db"
       kamoku_db_tablename = "kamoku2013"
-      term_now = "春"
-      mod_now = "C"
+      term_now = "秋"
+      mod_now = "A"
 
       db = SQLite3::Database.new(kamoku_db_filename)
       db.busy_timeout(10000)
