@@ -4,9 +4,11 @@ class TwitterBot
   class Users
 
     def initialize(filename)
-
       @filename = filename
+      reload()
+    end
 
+    def reload()
       if File.exist?(@filename)
         open(@filename) do |io|
           @info = YAML.load(io)

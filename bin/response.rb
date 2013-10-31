@@ -236,6 +236,7 @@ daigorou.client.on_timeline_status do |status|
   # 他のBotとの連携
   if daigorou.config['Coop'].include?(screen_name)
     if isMention_not_RT
+      daigorou.coop.reload()
       s = daigorou.coop.status(screen_name)
       if s[:last].eql_day?(Time.now)
         logs "\t>>ignore(連携制限)"
@@ -316,7 +317,7 @@ daigorou.client.on_direct_message do |message|
     next
   end
 
-  reply_text = 'usage(使い方): http://gam0022.net/works/daigoroubot.html#%E8%A8%AD%E5%AE%9A'
+  reply_text = 'usage(使い方): ttp://gam0022.net/works/daigoroubot.html#%E8%A8%AD%E5%AE%9A'
 
   if text =~ /^(挨拶|あいさつ)(して.*|しろ.*|開始|許可)?$/
     daigorou.users.config(sender_id)[:greeting] = true
