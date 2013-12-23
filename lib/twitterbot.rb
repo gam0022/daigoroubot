@@ -132,7 +132,7 @@ class TwitterBot
   end
 
   # 140文字を超えるポストをする。
-  def post2(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=1, count = 5)
+  def post2(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=1, count = 3)
 
     return if count == 0
 
