@@ -75,14 +75,17 @@ end
 #
 def generate_replay(status, daigorou, text, text_, screen_name, user_id, id, isRT, isMention, isMention_not_RT)
 
-  if daigorou.users.config(user_id)[:greeting] && !isRT
-    # TL上のメンションではない発言に対して、単語に反応して自発的にリプライ
+  if !isRT
+    # RTは無視
     if status.user_mentions.empty?
-      str_update = search_table(daigorou.config['ReplayTable']['self'], text)
+      # TL上のメンションではない発言に対して、単語に反応
+      # 挨拶が停止されていても発動
+      str_update = search_table(daigorou.config['ReplayTable']['self'], text.delete("@#{daigorou.name} "))
       return str_update if str_update
     end
-    # 自分に無関係なリプライを除くTL上の全ての発言に対して、単語に反応してリプライ
-    if status.user_mentions.empty? || isMention
+
+    if daigorou.users.config(user_id)[:greeting] && ( status.user_mentions.empty? || isMention )
+      # 自分に無関係なリプライを除くTL上の全ての発言に反応
       str_update = search_table(daigorou.config['ReplayTable']['all'], text.delete("@#{daigorou.name} "))
       return str_update, isMention ? 3 : 1 if str_update
     end
