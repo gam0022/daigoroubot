@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 $:.unshift File.dirname(__FILE__)
 require 'rubygems'
+#gem 'twitter', '~> 5.4.1'
+require 'twitter'
+require 'tweetstream'
 require 'time'
 require 'MeCab'
 require 'enumerator' # each_consを利用するため必要
 require 'open-uri'
 require 'kconv'
-#require 'oauth'
-#require 'net/https'
-#require 'json/pure'
 require 'yaml'
 require 'fileutils'
 require 'pp'
 require 'optparse'
-require 'twitter'
-require 'tweetstream'
 require 'thread'
 
 require_relative "twitterbot/database"
@@ -39,7 +37,8 @@ class TwitterBot
     :config, :name, 
     :debug, 
     :config_file,
-    :users, :coop, :client, :function, :database,
+    :users, :coop, :function, :database,
+    :client_rest, :client_rest_sub, :client_stream,
     :CONSUMER_KEY, :CONSUMER_SECRET, :OAUTH_TOEKN, :OAUTH_TOEKN_SECRET
 
   BaseDir = Dir::getwd + '/'
@@ -71,13 +70,21 @@ class TwitterBot
     @OAUTH_TOEKN        = @config[oauth]['OauthToken']
     @OAUTH_TOEKN_SECRET = @config[oauth]['OauthTokenSecret']
 
-    Twitter.configure do |config|
-      config.consumer_key       = @CONSUMER_KEY      
-      config.consumer_secret    = @CONSUMER_SECRET   
-      config.oauth_token        = @OAUTH_TOEKN
-      config.oauth_token_secret = @OAUTH_TOEKN_SECRET
+    @client_rest = Twitter::REST::Client.new do |config|
+      config.consumer_key        = @CONSUMER_KEY      
+      config.consumer_secret     = @CONSUMER_SECRET   
+      config.access_token        = @OAUTH_TOEKN
+      config.access_token_secret = @OAUTH_TOEKN_SECRET
     end
 
+    @client_rest_sub = Twitter::REST::Client.new do |config|
+      config.consumer_key        = @config['oauth_sub']['ConsumerKey']
+      config.consumer_secret     = @config['oauth_sub']['ConsumerSecret']
+      config.access_token        = @config['oauth_sub']['OauthToken']
+      config.access_token_secret = @config['oauth_sub']['OauthTokenSecret']
+    end
+
+    # 内部クラスのインスタンスを初期化
     if response
       TweetStream.configure do |config|
         config.consumer_key       = @CONSUMER_KEY      
@@ -86,11 +93,15 @@ class TwitterBot
         config.oauth_token_secret = @OAUTH_TOEKN_SECRET
         config.auth_method        = :oauth
       end
-    end
 
-    # 内部クラスのインスタンスを初期化
-    if response
-      @client = TweetStream::Client.new
+      # TODO: twitter gem の Streaming が安定したら乗り換える。
+      #@client_stream = Twitter::Streaming::Client.new do |config|
+      #  config.consumer_key        = @CONSUMER_KEY      
+      #  config.consumer_secret     = @CONSUMER_SECRET   
+      #  config.access_token        = @OAUTH_TOEKN
+      #  config.access_token_secret = @OAUTH_TOEKN_SECRET
+      #end
+      @client_stream = TweetStream::Client.new
       @users = Users.new(@files[:users])
     end
     if db
@@ -105,79 +116,97 @@ class TwitterBot
 
     text = "@#{in_reply_to} #{text}" if in_reply_to
     text += " - " + Time.now.to_s if time
+    text = text[0..137] + "(略" if text.length > 140
 
-    (1..try).each do |i|
-      # 140文字の制限をチェック
-      text = text[0..137] + "(略" if text.length > 140
+    client = @client_rest
+    count = 0
 
-      begin
-        if in_reply_to_status_id
-          Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
-        else
-          Twitter.update(text)
-        end
-      rescue Timeout::Error, StandardError, Net::HTTPServerException
-        logs "#error: 投稿エラー発生! #{i}回目 [#{text}] #{$!}"
-        text += '　'
-        if i>=try
-          logs "#error: 投稿できまでんでした!!"
-          break
-        end
+    begin
+      if count>=try
+        logs "#error: 投稿できまでんでした!!"
+        return
       else
-        break
+        count += 1
       end
+
+      if in_reply_to_status_id
+        client.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
+      else
+        client.update(text)
+      end
+    rescue Twitter::Error::Forbidden
+      logs "#error: 連投による投稿エラー発生! #{count}回目 [#{text}] #{$!}"
+      text += '　'
+      retry
+    rescue Timeout::Error, StandardError, Net::HTTPServerException
+      logs "#error: 規制やネットワークによる投稿エラー発生! #{count}回目 [#{text}] #{$!}"
+      client = @client_rest
+      retry
     end
+
     logs "\t>>#{text}"
 
   end
 
   # 140文字を超えるポストをする。
-  def post2(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try=1, count = 3)
+  def post2(text, in_reply_to = false, in_reply_to_status_id = nil, time = false, try = 1, times = 3)
 
-    return if count == 0
+    return if times == 0
 
     text = "@#{in_reply_to} #{text}" if in_reply_to
     text += " - " + Time.now.to_s if time
 
-    (1..try).each do |i|
-      begin
-        if text.length <= 140
-          if in_reply_to_status_id
-            Twitter.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
-          else
-            Twitter.update(text)
-          end
-          logs "\t>>#{text}"
-        else
-          t1, t2 = text.take_lines_at_length(140)
-          if count == 1 && !t2.empty?
-            if t1.length <= 136
-              t1 += "(略"
-            else
-              t1 = t1[0..137] + "(略" 
-            end
-          end
-          if in_reply_to_status_id
-            Twitter.update(t1, {:in_reply_to_status_id => in_reply_to_status_id})
-          else
-            Twitter.update(t1)
-          end
-          logs "\t>>#{t1}"
-          post2(t2, in_reply_to, in_reply_to_status_id, time, try, count - 1)
-        end
-      rescue Timeout::Error, StandardError, Net::HTTPServerException
-        logs "#error: 投稿エラー発生! #{i}回目 [#{text}] #{$!}"
-        text += '　'
-        if i>=try
-          logs "#error: 投稿できまでんでした!!"
-          break
-        end
+    client = @client_rest unless client
+    count = 0
+
+    puts "times: #{times}"
+
+    begin
+      if count>=try
+        logs "#error: 投稿できまでんでした!!"
+        return
       else
-        break
+        count += 1
       end
+
+      if text.length <= 140
+        if in_reply_to_status_id
+          client.update(text, {:in_reply_to_status_id => in_reply_to_status_id})
+        else
+          client.update(text)
+        end
+        logs "\t>>#{text}"
+      else
+        t1, t2 = text.take_lines_at_length(140)
+        if times == 1 && !t2.empty?
+          if t1.length <= 136
+            t1 += "(略"
+          else
+            t1 = t1[0..137] + "(略" 
+          end
+        end
+        if in_reply_to_status_id
+          client.update(t1, {:in_reply_to_status_id => in_reply_to_status_id})
+        else
+          client.update(t1)
+        end
+        logs "\t>>#{t1}"
+        post2(t2, in_reply_to, in_reply_to_status_id, time, try, times - 1)
+      end
+    rescue Twitter::Error::Forbidden
+      logs "#error: 連投による投稿エラー発生! #{count}回目 [#{text}] #{$!}"
+      text += '　'
+      retry
+    rescue Timeout::Error, StandardError, Net::HTTPServerException
+      logs "#error: 規制やネットワークによる投稿エラー発生! #{count}回目 [#{text}] #{$!}"
+      client = @client_rest_sub
+      retry
     end
   end
 
+  def direct_message(sender_name, reply_text)
+    @client_rest.create_direct_message(sender_name, reply_text)
+  end
 
   def favorite(status)
     if status.retweeted_status
@@ -187,7 +216,7 @@ class TwitterBot
 
     if !status.favourited
       logs "\tFAV>>id:#{status.id}"
-      Twitter.favorite(status.id) rescue logs "#error: #{$!}"
+      @client_rest.favorite(status.id) rescue logs "#error: #{$!}"
     end
   end
 
@@ -199,7 +228,7 @@ class TwitterBot
 
     if !status.retweeted
       logs "\tRT>>id:#{status.id}"
-      Twitter.retweet(status.id) rescue logs "#error: #{$!}"
+      @client_rest.retweet(status.id) rescue logs "#error: #{$!}"
     end
   end
 

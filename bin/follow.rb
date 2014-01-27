@@ -5,26 +5,26 @@ require_relative '../lib/twitterbot'
 logs "#start: follow.rb"
 daigorou = TwitterBot.new(false, false, false)
 
-new_follow = ( daigorou.config['Users']['follow'] | Twitter.follower_ids.ids ) - Twitter.friend_ids.ids - Twitter.friendships_outgoing.ids - daigorou.config['Users']['remove']
+new_follow = ( daigorou.config['Users']['follow'] | daigorou.client_rest.follower_ids.ids ) - daigorou.client_rest.friend_ids.ids - daigorou.client_rest.friendships_outgoing.ids - daigorou.config['Users']['remove']
 
 new_follow.each do |id|
   begin
-    logs "[#{Twitter.user(id).screen_name}]をフォローします。"
-    Twitter.follow(Twitter.user(id).id)
+    logs "[#{daigorou.client_rest.user(id).screen_name}]をフォローします。"
+    daigorou.client_rest.follow(daigorou.client_rest.user(id).id)
   rescue
     logs "#error: #{$!}"
   else
     text = ["フォロー返したのだ！", "フォローありがとうなのだ！", "フォローしたのだ！"].sample
-    daigorou.post("#{Twitter.user(id).name}、#{text}", Twitter.user(id).screen_name)
+    daigorou.post("#{daigorou.client_rest.user(id).name}、#{text}", daigorou.client_rest.user(id).screen_name)
   end
 end
 
-new_unfollow = ( daigorou.config['Users']['remove'] & Twitter.friend_ids.ids ) | (Twitter.friend_ids.ids - Twitter.follower_ids.ids ) - daigorou.config['Users']['follow']
+new_unfollow = ( daigorou.config['Users']['remove'] & daigorou.client_rest.friend_ids.ids ) | (daigorou.client_rest.friend_ids.ids - daigorou.client_rest.follower_ids.ids ) - daigorou.config['Users']['follow']
 
 new_unfollow.each do |id|
   begin
-    logs "[#{Twitter.user(id).screen_name}]をリムーブします。"
-    Twitter.unfollow(Twitter.user(id).id)
+    logs "[#{daigorou.client_rest.user(id).screen_name}]をリムーブします。"
+    daigorou.client_rest.unfollow(daigorou.client_rest.user(id).id)
   rescue
     logs "#error: #{$!}"
   end

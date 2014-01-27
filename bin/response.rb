@@ -184,7 +184,7 @@ end
 #
 # TLを取得
 #
-daigorou.client.on_timeline_status do |status|
+daigorou.client_stream.on_timeline_status do |status|
 
   text = status.text
   text_ = text.filter
@@ -192,7 +192,7 @@ daigorou.client.on_timeline_status do |status|
   user_id = status.user.id
   id = status.id
 
-  isRT = status.retweeted_status
+  isRT = status.retweeted
   isMention = status.user_mentions.any?{|user| user.screen_name==daigorou.name}
   isMention_not_RT = isMention && !isRT
 
@@ -306,7 +306,7 @@ daigorou.client.on_timeline_status do |status|
 end
 
 # Direct Message
-daigorou.client.on_direct_message do |message|
+daigorou.client_stream.on_direct_message do |message|
   logs "#direct message:"
 
   text = message.text.filter
@@ -350,14 +350,14 @@ daigorou.client.on_direct_message do |message|
 end
 
 # Error Handling
-daigorou.client.on_error do |message|
+daigorou.client_stream.on_error do |message|
   time = logs("#error: #{message}")
   Twitter.direct_message_create(daigorou.config['author'], "#{time} #{$!}")
 end
 
 # Reconnect
-daigorou.client.on_reconnect do |timeout, retries|
+daigorou.client_stream.on_reconnect do |timeout, retries|
   logs "#reconnect: timeout:#{timeout}, retries:#{retries}"
 end
 
-daigorou.client.userstream
+daigorou.client_stream.userstream
