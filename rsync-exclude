@@ -1,6 +1,5 @@
 .DS_Store
 *.swp
-*.db
 *.sqlite3
 *.log
 *.cer
@@ -10,6 +9,7 @@ backup/
 test/
 logs/
 
+general.db
 MeCab.so
 users.yaml
 coop.yaml
