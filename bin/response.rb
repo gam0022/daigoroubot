@@ -279,7 +279,7 @@ daigorou.client.on_timeline_status do |status|
   #
   # Favorite
   #
-  if text.index(/(ふぁぼ|足あと|踏めよ)/)
+  if rand(10) == 0 && text.index(/(ふぁぼ|足あと|踏めよ)/)
     if isMention_not_RT || text =~ /大五郎/
       # 「ふぁぼ」を含むリプライをふぁぼ爆撃する
       Twitter.user_timeline(screen_name, {:count => rand(40)}).each do |status| 
