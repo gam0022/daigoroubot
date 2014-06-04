@@ -6,6 +6,7 @@ class TwitterBot
     # requirements
     include Math
     require 'unicode_math'
+    require 'time'
 
     def initialize(config)
       @sandbox = Sandbox.new
@@ -128,11 +129,11 @@ class TwitterBot
       text = ""
       logs kamoku_db_filename  = BaseDir + "kamoku.db"
       kamoku_db_tablename = "kamoku"
-      term_now = "春"
-      mod_now = "A"
 
       db = SQLite3::Database.new(kamoku_db_filename)
       db.busy_timeout(10000)
+
+      term_now, mod_now = get_term_and_mod()
 
       begin
         name.gsub!("'", "''")
@@ -151,6 +152,39 @@ class TwitterBot
       end
 
       return text.empty? ? nil : text
+    end
+
+    private
+
+    TERM_BEGIN = {
+      "春" => {
+        "A" => "2014/04/11",
+        "B" => "2014/05/23",
+        "C" => "2014/07/04"
+      },
+      "夏" => "2014/08/09",
+      "秋" => {
+        "A" => "2014/10/01",
+        "B" => "2014/11/08",
+        "C" => "2014/12/24"
+      }
+    }
+
+    def get_term_and_mod
+
+      term_now = "春"
+      mod_now = "A"
+
+      TERM_BEGIN.each do |term, mods|
+        mods.each do |mod, date|
+          if Time.now >= Time.parse(date)
+            term_now = term
+            mod_now = mod
+          else
+            return term_now, mod_now
+          end
+        end
+      end
     end
 
   end
