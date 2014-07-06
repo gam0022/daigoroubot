@@ -19,5 +19,3 @@ MeCab.so
 config.yaml
 users.yaml
 coop.yaml
-
-Gemfile.lock

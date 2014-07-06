@@ -1,0 +1,51 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    addressable (2.3.4)
+    cookiejar (0.3.0)
+    daemons (1.1.9)
+    em-http-request (1.0.3)
+      addressable (>= 2.2.3)
+      cookiejar
+      em-socksify
+      eventmachine (>= 1.0.0.beta.4)
+      http_parser.rb (>= 0.5.3)
+    em-socksify (0.2.1)
+      eventmachine (>= 1.0.0.beta.4)
+    em-twitter (0.2.2)
+      eventmachine (~> 1.0)
+      http_parser.rb (~> 0.5)
+      simple_oauth (~> 0.1)
+    eventmachine (1.0.3)
+    faraday (0.9.0)
+      multipart-post (>= 1.2, < 3)
+    http_parser.rb (0.5.3)
+    json (1.7.7)
+    multi_json (1.10.1)
+    multipart-post (2.0.0)
+    oauth (0.4.7)
+    simple_oauth (0.2.0)
+    sqlite3 (1.3.7)
+    tweetstream (2.5.0)
+      daemons (~> 1.1)
+      em-http-request (~> 1.0.2)
+      em-twitter (~> 0.2)
+      twitter (~> 4.5)
+      yajl-ruby (~> 1.1)
+    twitter (4.8.1)
+      faraday (~> 0.8, < 0.10)
+      multi_json (~> 1.0)
+      simple_oauth (~> 0.2)
+    unicode_math (1.3.0)
+    yajl-ruby (1.1.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  json
+  oauth
+  sqlite3
+  tweetstream
+  twitter (~> 4.8.1)
+  unicode_math
