@@ -5,7 +5,25 @@ require_relative '../lib/twitterbot'
 logs "#start: follow.rb"
 daigorou = TwitterBot.new(false, false, false)
 
-new_follow = ( daigorou.config['Users']['follow'] | Twitter.follower_ids.ids ) - Twitter.friend_ids.ids - Twitter.friendships_outgoing.ids - daigorou.config['Users']['remove']
+cursor = "-1"
+follower_ids = []
+while cursor != 0 do
+  followers = Twitter.follower_ids(nil, {cursor: cursor})
+  cursor = followers.next_cursor
+  follower_ids.concat(followers.ids)
+end
+
+cursor = "-1"
+friend_ids = []
+while cursor != 0 do
+  friends = Twitter.friend_ids(nil, {cursor: cursor})
+  cursor = friends.next_cursor
+  friend_ids.concat(friends.ids)
+end
+
+new_follow = ( daigorou.config['Users']['follow'] | follower_ids ) - friend_ids - Twitter.friendships_outgoing.ids - daigorou.config['Users']['remove']
+
+new_follow_count = 0
 
 new_follow.each do |id|
   begin
@@ -19,10 +37,14 @@ new_follow.each do |id|
   else
     text = ["フォロー返したのだ！", "フォローありがとうなのだ！", "フォローしたのだ！"].sample
     daigorou.post("#{Twitter.user(id).name}、#{text}", Twitter.user(id).screen_name)
+    new_follow_count += 1
+    if new_follow_count == 10
+      exit
+    end
   end
 end
 
-new_unfollow = ( daigorou.config['Users']['remove'] & Twitter.friend_ids.ids ) | (Twitter.friend_ids.ids - Twitter.follower_ids.ids ) - daigorou.config['Users']['follow']
+new_unfollow = ( daigorou.config['Users']['remove'] & friend_ids ) | (friend_ids - follower_ids) - daigorou.config['Users']['follow']
 
 new_unfollow.each do |id|
   begin
