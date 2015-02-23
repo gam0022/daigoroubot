@@ -292,7 +292,7 @@ daigorou.client.on_timeline_status do |status|
   end
 
   # 学習させる
-  if (rand(10) == 0 || isMention_not_RT) && !daigorou.debug && daigorou.users.config(user_id)[:learn]
+  if rand(10) == 0 && !daigorou.debug && daigorou.users.config(user_id)[:learn] && (text =~ /[؀-ۿ]/) == nil
     daigorou.learn(text.filter)
   end
 
