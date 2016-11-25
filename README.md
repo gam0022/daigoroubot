@@ -7,4 +7,4 @@
 つくば市の天気予報機能、電卓機能、n進数変換器など便利な機能を搭載しています。
 
 * http://twitter.com/daigoroubot
-* http://gam0022.net/works/daigoroubot.html
+* http://gam0022.net/works/daigoroubot
