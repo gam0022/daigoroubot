@@ -68,7 +68,7 @@ if flag.regular
     logs "#error: faild to set keyword"
   end
 
-  if !str_update
+  if !str_update || str_update == ""
     str_update = daigorou.config['WordsOnFaildRegularTweet'].sample
   end
 

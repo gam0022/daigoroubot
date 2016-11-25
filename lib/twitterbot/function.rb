@@ -132,16 +132,17 @@ class TwitterBot
 
       db = SQLite3::Database.new(kamoku_db_filename)
       db.busy_timeout(10000)
+      db.results_as_hash = true
 
       term_now, mod_now = get_term_and_mod()
 
       begin
         name.gsub!("'", "''")
-        sql = "select * from #{kamoku_db_tablename} where 科目名 like '#{name}%'"
+        sql = "select * from #{kamoku_db_tablename} where name like '#{name}%'"
         db.execute(sql) do |row|
-          term = row[4]
+          term = row["term"]
           if (term =~ /#{term_now}([ABC]+)/ && $1 != nil && $1.include?(mod_now)) || term.include?("集中") || term.include?("通年")
-            text += "#{row[0]} #{row[1]} #{term} #{row[5].gsub("\n", "/")} #{row[6]}\n"
+            text += "#{row["code"]} #{row["name"]} #{term} #{row["period"].gsub("\n", "/")} #{row["location"]}\n"
           end
         end
 
@@ -158,15 +159,15 @@ class TwitterBot
 
     TERM_BEGIN = {
       "春" => {
-        "A" => "2014/04/11",
-        "B" => "2014/05/23",
-        "C" => "2014/07/02"
+        "A" => "2015/04/07",
+        "B" => "2015/05/23",
+        "C" => "2015/07/04"
       },
-      #"夏" => "2014/08/09",
+      #"夏" => "2015/08/09",
       "秋" => {
-        "A" => "2014/10/01",
-        "B" => "2014/11/08",
-        "C" => "2014/12/24"
+        "A" => "2015/10/01",
+        "B" => "2015/11/08",
+        "C" => "2015/12/24"
       }
     }
 

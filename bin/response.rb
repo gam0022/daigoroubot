@@ -354,7 +354,7 @@ end
 # Error Handling
 daigorou.client.on_error do |message|
   time = logs("#error: #{message}")
-  Twitter.direct_message_create(daigorou.config['author'], "#{time} #{$!}")
+  Twitter.direct_message_create(daigorou.config['author'], "#{time} #{message}")
 end
 
 # Reconnect

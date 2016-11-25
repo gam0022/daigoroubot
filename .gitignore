@@ -9,6 +9,7 @@ general.db
 backup/
 test/
 tools/
+logs/
 
 response
 tweet
@@ -19,3 +20,5 @@ MeCab.so
 config.yaml
 users.yaml
 coop.yaml
+
+bin/error_ids.txt

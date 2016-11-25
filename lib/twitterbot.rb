@@ -2,7 +2,7 @@
 $:.unshift File.dirname(__FILE__)
 require 'rubygems'
 require 'time'
-require 'MeCab'
+require "MeCab"
 require 'enumerator' # each_consを利用するため必要
 require 'open-uri'
 require 'kconv'
@@ -47,6 +47,7 @@ class TwitterBot
   def initialize(debug = false, response = false, db = true, config_file = BaseDir + "config.yaml")
     @config_file = config_file
     @debug = debug
+    @mecab = MeCab::Tagger.new('-O wakati')
     load_config(response, db)
   end
 
@@ -208,8 +209,7 @@ class TwitterBot
   #
   def learn(text)
 
-    mecab = MeCab::Tagger.new('-O wakati') 
-    node =  mecab.parseToNode(text + " EOS")
+    node =  @mecab.parseToNode(text + " EOS")
     surfaces = Array.new# 分解した単語のリスト
     features = Array.new# 分解した単語の品詞のリスト
 
@@ -299,8 +299,7 @@ class TwitterBot
   def gobi(text)
 
     # mecabで形態素解析して、 参照テーブルを作る
-    mecab = MeCab::Tagger.new('-O wakati') 
-    node =  mecab.parseToNode(text)
+    node =  @mecab.parseToNode(text)
 
     buf = ""
 
